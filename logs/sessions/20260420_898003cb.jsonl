@@ -1,0 +1,2 @@
+{"timestamp": 1776676575.931521, "session_id": "898003cb-937a-4bf2-a061-0258087f94fb", "event_type": "turn", "turn_index": 1, "user_text": "你好，给我报价一下你们的价格", "agent_text": "您好！为了给您提供准确的报价，我需要了解一些具体信息。比如您感兴趣的产品或服务是什么？数量是多少？是否有特定的要求或者规格呢？另外，您是希望在本地购买还是在线下单？请您提供更多详细信息，我会尽快为您做出报价。", "emotion": "neutral", "intent": "knowledge", "tools_called": []}
+{"timestamp": 1776676692.003406, "session_id": "898003cb-937a-4bf2-a061-0258087f94fb", "event_type": "session_end", "total_turns": 1, "resolution": ""}

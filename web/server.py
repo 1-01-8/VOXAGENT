@@ -66,7 +66,13 @@ def _try_load_voice(config: VORConfig):
                 model_id=config.sensevoice_model,
                 device=config.sensevoice_device,
                 model_size=config.whisper_model,
-                api_key=config.llm_api_key,
+                api_key=(
+                    config.siliconflow_api_key
+                    if config.stt_provider == "siliconflow"
+                    else config.llm_api_key
+                ),
+                sf_stt_model=config.siliconflow_stt_model,
+                sf_base_url=config.siliconflow_base_url,
             )
             logger.info(f"STT loaded: {config.stt_provider}")
         except Exception as e:
@@ -80,9 +86,25 @@ def _try_load_voice(config: VORConfig):
                 model_id=config.cosyvoice_model,
                 device=config.cosyvoice_device,
                 default_speaker=config.cosyvoice_default_speaker,
-                api_key=config.llm_api_key,
+                api_key=(
+                    config.siliconflow_api_key
+                    if config.tts_provider == "siliconflow"
+                    else config.llm_api_key
+                ),
+                sf_tts_model=config.siliconflow_tts_model,
+                sf_tts_voice=config.siliconflow_tts_voice,
+                sf_base_url=config.siliconflow_base_url,
+                sf_tts_sample_rate=config.siliconflow_tts_sample_rate,
+                sf_tts_format=config.siliconflow_tts_format,
+                sf_tts_speed=config.siliconflow_tts_speed,
             )
             logger.info(f"TTS loaded: {config.tts_provider}")
+            # 启动时预热：触发模型加载 + JIT 编译 + 音色缓存（首条请求不再等 30s）
+            try:
+                if hasattr(tts, "_ensure_model"):
+                    tts._ensure_model()
+            except Exception as e:
+                logger.warning(f"TTS 预热失败: {e}")
         except Exception as e:
             logger.warning(f"TTS 不可用 ({type(e).__name__}: {e})，降级为文字输出")
 
@@ -269,23 +291,160 @@ async def websocket_chat(ws: WebSocket):
             # ── 5. 记忆管理 ──
             await per_session_memory.add_turn("user", user_text, session)
 
-            # ── 6. 生成回复 ──
+            # ── 6. 生成回复（LLM→TTS 全流水线）──
             agent = _components["agent"]
-            reply_text = ""
+            tts = _components.get("tts")
+            llm = _components["llm"]
 
+            # 流水线：LLM token → 文本缓冲 → 片段送 TTS → 音频块推给前端
+            # 触发 flush 的条件：遇到标点 或 缓冲达到阈值
+            import re, base64
+            FLUSH_PUNCT = set("，。！？；：,.!?;:\n")
+            MIN_FLUSH_CHARS = 6  # 最少多少字才送 TTS（太短音色不稳）
+
+            reply_parts: list[str] = []
+            tts_queue: asyncio.Queue = asyncio.Queue(maxsize=8)
+
+            async def _tts_consumer():
+                """从 tts_queue 取文本片段，合成并发送 audio_chunk。
+
+                若 tts 支持 `synthesize_http_stream`（如 SiliconFlowTTS），
+                按 HTTP chunked 模式边接收边下推，TTFB < 1s；
+                否则退回整段 synthesize。
+                """
+                seg_idx = 0
+                t_first_audio = None
+                supports_http_stream = hasattr(tts, "synthesize_http_stream")
+                # 采样率用于 RTF 计算（SF 默认 24kHz，本地 CosyVoice 也 24kHz）
+                sr = getattr(tts, "sample_rate", 24000) if tts else 24000
+                while True:
+                    seg = await tts_queue.get()
+                    if seg is None:
+                        await ws.send_json({"type": "audio_end"})
+                        return
+                    if not tts:
+                        continue
+                    t_s = time.perf_counter()
+                    try:
+                        if supports_http_stream:
+                            total = 0
+                            first_chunk_t = None
+                            async for pcm_chunk in tts.synthesize_http_stream(seg):
+                                if first_chunk_t is None:
+                                    first_chunk_t = time.perf_counter()
+                                    if t_first_audio is None:
+                                        t_first_audio = first_chunk_t
+                                        logger.info(
+                                            f"[PIPE-TIMER] FIRST_AUDIO from_t0="
+                                            f"{(t_first_audio-t0)*1000:.0f}ms "
+                                            f"seg0_chars={len(seg)} "
+                                            f"seg0_ttfb={(first_chunk_t-t_s)*1000:.0f}ms"
+                                        )
+                                total += len(pcm_chunk)
+                                await ws.send_json({
+                                    "type": "audio_chunk",
+                                    "audio": base64.b64encode(pcm_chunk).decode(),
+                                    "sample_rate": sr,
+                                })
+                            wall_ms = (time.perf_counter() - t_s) * 1000
+                            audio_ms = (total // 2) * 1000.0 / sr if total else 0
+                            logger.info(
+                                f"[PIPE-TIMER] seg#{seg_idx} chars={len(seg)} "
+                                f"tts_ms={wall_ms:.0f} audio_ms={audio_ms:.0f} "
+                                f"RTF={wall_ms/audio_ms if audio_ms else 0:.2f} (stream)"
+                            )
+                        else:
+                            pcm = await tts.synthesize(seg)
+                            wall_ms = (time.perf_counter() - t_s) * 1000
+                            audio_ms = (len(pcm) // 2) * 1000.0 / sr if pcm else 0
+                            if t_first_audio is None:
+                                t_first_audio = time.perf_counter()
+                                logger.info(
+                                    f"[PIPE-TIMER] FIRST_AUDIO from_t0="
+                                    f"{(t_first_audio-t0)*1000:.0f}ms "
+                                    f"seg0_chars={len(seg)} seg0_wall={wall_ms:.0f}ms"
+                                )
+                            logger.info(
+                                f"[PIPE-TIMER] seg#{seg_idx} chars={len(seg)} "
+                                f"tts_ms={wall_ms:.0f} audio_ms={audio_ms:.0f} "
+                                f"RTF={wall_ms/audio_ms if audio_ms else 0:.2f}"
+                            )
+                            await ws.send_json({
+                                "type": "audio_chunk",
+                                "audio": base64.b64encode(pcm).decode(),
+                                "sample_rate": sr,
+                            })
+                    except Exception as e:
+                        logger.warning(f"TTS seg#{seg_idx} 失败: {e}")
+                    seg_idx += 1
+
+            consumer_task = asyncio.create_task(_tts_consumer()) if tts else None
+
+            async def _produce_from_stream(prompt_text: str, context: str = ""):
+                """从 LLM 流读 token，按标点/长度切片喂给 tts_queue。"""
+                buf = ""
+                t_llm0 = time.perf_counter()
+                t_first_tok = None
+                total_chars = 0
+                async for tok in llm.stream(prompt_text, context=context):
+                    if t_first_tok is None:
+                        t_first_tok = time.perf_counter()
+                        logger.info(
+                            f"[PIPE-TIMER] LLM_FIRST_TOKEN +{(t_first_tok-t0)*1000:.0f}ms"
+                        )
+                    buf += tok
+                    total_chars += len(tok)
+                    # 找最后一个标点，切出可发射的前段
+                    while True:
+                        idx = -1
+                        for i, ch in enumerate(buf):
+                            if ch in FLUSH_PUNCT:
+                                idx = i
+                        if idx >= 0 and idx + 1 >= MIN_FLUSH_CHARS:
+                            seg, buf = buf[:idx + 1], buf[idx + 1:]
+                            seg = seg.strip()
+                            if seg:
+                                reply_parts.append(seg)
+                                if tts:
+                                    await tts_queue.put(seg)
+                            break  # 本轮只切一段，继续收下一 token
+                        else:
+                            break
+                # 残余缓冲
+                if buf.strip():
+                    reply_parts.append(buf.strip())
+                    if tts:
+                        await tts_queue.put(buf.strip())
+                logger.info(
+                    f"[PIPE-TIMER] LLM_DONE wall={(time.perf_counter()-t_llm0)*1000:.0f}ms "
+                    f"chars={total_chars} segs={len(reply_parts)}"
+                )
+
+            t_gen0 = time.perf_counter()
             if intent == IntentType.TASK:
                 await ws.send_json({"type": "status", "message": "正在处理您的请求..."})
+                # Agent 执行不支持流式 token，退回非流式
                 reply_text = await agent.execute(user_text, session)
+                reply_parts.append(reply_text)
+                if tts:
+                    await tts_queue.put(reply_text)
             elif intent == IntentType.KNOWLEDGE:
                 context = per_session_memory.get_context()
-                llm = _components["llm"]
-                reply_text = await llm.generate(
-                    f"基于上下文回答用户问题：\n用户：{user_text}",
-                    context=context,
+                await _produce_from_stream(
+                    f"基于上下文回答用户问题：\n用户：{user_text}", context=context,
                 )
             else:
-                llm = _components["llm"]
-                reply_text = await llm.generate(f"友好地回复用户的闲聊：{user_text}")
+                await _produce_from_stream(f"友好地回复用户的闲聊：{user_text}")
+
+            # 关 TTS 队列，等消费者清空
+            if tts:
+                await tts_queue.put(None)
+
+            reply_text = "".join(reply_parts)
+            logger.info(
+                f"[PIPE-TIMER] intent={intent.value} gen_ms={(time.perf_counter()-t_gen0)*1000:.0f} "
+                f"reply_len={len(reply_text)}"
+            )
 
             # ── 7. 质检 ──
             auto_qa = _components["auto_qa"]
@@ -304,29 +463,27 @@ async def websocket_chat(ws: WebSocket):
                 intent=intent.value,
             )
 
-            # ── 9. TTS（若可用）──
-            audio_b64 = None
-            if _components.get("tts"):
-                try:
-                    tts = _components["tts"]
-                    audio_bytes = await tts.synthesize(reply_text)
-                    import base64
-                    audio_b64 = base64.b64encode(audio_bytes).decode()
-                except Exception as e:
-                    logger.warning(f"TTS 失败: {e}")
-
+            # ── 9. 文字立即发回（不等 TTS）──
             elapsed_ms = (time.perf_counter() - t0) * 1000
-
-            # ── 10. 发送回复 ──
             await ws.send_json({
                 "type": "reply",
                 "text": reply_text,
                 "emotion": session.emotion.value,
                 "intent": intent.value,
-                "audio": audio_b64,
+                "audio": None,
                 "transferred": False,
                 "timing_ms": round(elapsed_ms, 1),
             })
+
+            # ── 10. 等待 TTS 消费者清空队列并发送 audio_end ──
+            # 注意：TTS 音频已经在 _produce_from_stream / TASK 分支里通过 tts_queue
+            # 交给 _tts_consumer 边合成边下推了，这里不再重复合成 reply_text，
+            # 否则前端会同时收到两套 PCM，产生 "多重声效 / 回声" 的听感。
+            if consumer_task is not None:
+                try:
+                    await consumer_task
+                except Exception as e:
+                    logger.warning(f"TTS consumer 异常: {e}")
 
     except WebSocketDisconnect:
         logger.info(f"会话 {session_id[:8]} 断开")
@@ -344,6 +501,11 @@ async def websocket_chat(ws: WebSocket):
 @app.websocket("/ws/stream")
 async def websocket_stream(ws: WebSocket):
     """流式语音 WebSocket 端点：逐 chunk 接收音频，实时返回 partial/final 转写。
+
+    ⚠️ [DEPRECATED · v1.0.0+] 本端点依赖本地 `SenseVoiceSTT`（FunASR），v1.0.0 起
+    项目默认 STT provider 已切换为 SiliconFlow（云端非流式）。当前配置下本端点会直接
+    返回 "流式 STT 不可用" 并关闭连接，主链路请使用 `/ws/chat`。
+    保留本端点是为了 VOR_STT_PROVIDER=sensevoice 回滚场景与将来的 SF 流式 ASR 接入。
 
     协议（二进制 + JSON 混合）：
     → 客户端发送: binary frame（PCM int16, 16kHz, mono, 100ms/chunk）

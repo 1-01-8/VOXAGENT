@@ -1,0 +1,2 @@
+{"timestamp": 1776676098.8974204, "session_id": "32f35396-a203-410a-8d0e-730a383a5ecd", "event_type": "turn", "turn_index": 1, "user_text": "讲个笑话吧", "agent_text": "当然可以，接下来我给你讲一个笑话：\n\n小明的作业本总是丢三落四，这天他妈妈又没找到他的作业本，就问：“小明，你的作业本呢？”小明说：“在桌子上啊。”妈妈说：“明明桌子收拾得很干净啊！”小明调皮地说：“那一定是被作业本自己飞到抽屉里去了！”", "emotion": "neutral", "intent": "chitchat", "tools_called": []}
+{"timestamp": 1776676248.7653368, "session_id": "32f35396-a203-410a-8d0e-730a383a5ecd", "event_type": "session_end", "total_turns": 1, "resolution": ""}

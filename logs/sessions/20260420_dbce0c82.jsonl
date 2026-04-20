@@ -1,0 +1,2 @@
+{"timestamp": 1776681548.4595706, "session_id": "dbce0c82-6152-4222-94c3-282ed67efa16", "event_type": "turn", "turn_index": 1, "user_text": "你好呀", "agent_text": "你好呀！很高兴遇见你。今天天气不错，外面阳光明媚，适合出去走走呢。你在做什么呢？", "emotion": "neutral", "intent": "chitchat", "tools_called": []}
+{"timestamp": 1776681548.461282, "session_id": "dbce0c82-6152-4222-94c3-282ed67efa16", "event_type": "session_end", "total_turns": 1, "resolution": ""}

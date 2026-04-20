@@ -236,10 +236,16 @@ class ReactAgent:
 
     @staticmethod
     def _extract_final_answer(text: str) -> Optional[str]:
-        """从 LLM 输出中提取 Final Answer"""
+        """从 LLM 输出中提取 Final Answer。
+
+        兜底：若提取出的内容过短（<6 字），视为 LLM 格式残缺，返回 None 让循环继续，
+        避免直接把 "为了" / "好的" 等截断片段当作最终答案返回给用户。
+        """
         match = re.search(r"Final Answer:\s*(.+)", text, re.DOTALL)
         if match:
-            return match.group(1).strip()
+            answer = match.group(1).strip()
+            if len(answer) >= 6:
+                return answer
         return None
 
     @staticmethod

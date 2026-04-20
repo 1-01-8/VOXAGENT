@@ -1,0 +1,2 @@
+{"timestamp": 1776677664.1678581, "session_id": "2bceb001-e049-4e30-b451-e6c6eacdc3cf", "event_type": "turn", "turn_index": 1, "user_text": "你好，api价格", "agent_text": "您好！关于API的价格，这通常取决于您使用的具体服务和提供商。不同的API可能有不同的定价模式，例如按请求次数收费、包月或包年等。为了给您提供准确的信息，请告诉我您感兴趣的API是哪个？这样我可以帮助您了解大致的费用情况。", "emotion": "neutral", "intent": "knowledge", "tools_called": []}
+{"timestamp": 1776677812.5092192, "session_id": "2bceb001-e049-4e30-b451-e6c6eacdc3cf", "event_type": "session_end", "total_turns": 1, "resolution": ""}

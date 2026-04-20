@@ -1,0 +1,4 @@
+{"timestamp": 1776682447.0069437, "session_id": "5572b461-fd8b-4078-bd8c-80db5a16ce4e", "event_type": "turn", "turn_index": 1, "user_text": "你好", "agent_text": "你好！很高兴遇见你。今天天气不错，是个聊天的好日子呢！你在忙些什么？", "emotion": "neutral", "intent": "chitchat", "tools_called": []}
+{"timestamp": 1776682468.1240177, "session_id": "5572b461-fd8b-4078-bd8c-80db5a16ce4e", "event_type": "turn", "turn_index": 2, "user_text": "给我报价", "agent_text": "为了", "emotion": "neutral", "intent": "task", "tools_called": []}
+{"timestamp": 1776682498.4871204, "session_id": "5572b461-fd8b-4078-bd8c-80db5a16ce4e", "event_type": "turn", "turn_index": 3, "user_text": "怎么", "agent_text": "你好呀！很高兴和你聊天。你想聊聊什么呢？是喜欢的电影、美食，还是旅行经历呢？或者是最近遇到的一些有趣的事情？分享一下吧～我在这里听你说哦。", "emotion": "neutral", "intent": "chitchat", "tools_called": []}
+{"timestamp": 1776682560.7223027, "session_id": "5572b461-fd8b-4078-bd8c-80db5a16ce4e", "event_type": "session_end", "total_turns": 3, "resolution": ""}

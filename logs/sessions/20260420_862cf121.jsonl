@@ -1,0 +1,3 @@
+{"timestamp": 1776675898.7675056, "session_id": "862cf121-8f20-4a11-87ab-2d6cc23c77ed", "event_type": "turn", "turn_index": 1, "user_text": "All.", "agent_text": "你好！看起来你只是简单地打了个招呼，感觉像是个开始。想聊聊什么呢？无论是分享日常、讨论兴趣爱好还是其他话题都可以哦！", "emotion": "neutral", "intent": "chitchat", "tools_called": []}
+{"timestamp": 1776675920.464392, "session_id": "862cf121-8f20-4a11-87ab-2d6cc23c77ed", "event_type": "turn", "turn_index": 2, "user_text": "你好", "agent_text": "你好！很高兴遇见你。今天天气不错，是个聊天的好日子呢！你在做什么呢？", "emotion": "neutral", "intent": "chitchat", "tools_called": []}
+{"timestamp": 1776675972.191683, "session_id": "862cf121-8f20-4a11-87ab-2d6cc23c77ed", "event_type": "session_end", "total_turns": 2, "resolution": ""}

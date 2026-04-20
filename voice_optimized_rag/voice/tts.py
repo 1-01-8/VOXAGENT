@@ -84,5 +84,16 @@ def create_tts(provider: str, **kwargs) -> TTSProvider:
             device=kwargs.get("device", "cuda:0"),
             default_speaker=kwargs.get("default_speaker", "中文女"),
         )
+    elif provider == "siliconflow":
+        from voice_optimized_rag.voice.siliconflow_tts import SiliconFlowTTS
+        return SiliconFlowTTS(
+            api_key=kwargs["api_key"],
+            model=kwargs.get("sf_tts_model", "FunAudioLLM/CosyVoice2-0.5B"),
+            voice=kwargs.get("sf_tts_voice", "alex"),
+            base_url=kwargs.get("sf_base_url", "https://api.siliconflow.cn/v1"),
+            sample_rate=kwargs.get("sf_tts_sample_rate", 24000),
+            response_format=kwargs.get("sf_tts_format", "pcm"),
+            speed=kwargs.get("sf_tts_speed", 1.0),
+        )
     else:
         raise ValueError(f"Unknown TTS provider: {provider}")

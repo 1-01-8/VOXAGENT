@@ -48,19 +48,52 @@ class CosyVoiceTTS(TTSProvider):
         self._default_speaker = default_speaker
         self._model = None
         self._reference_audio: Optional[bytes] = None
+        self._cached_spk_id: Optional[str] = None
 
     def _ensure_model(self) -> None:
         """延迟加载模型"""
         if self._model is not None:
             return
         try:
-            from cosyvoice import CosyVoice2
+            from cosyvoice.cli.cosyvoice import CosyVoice2
         except ImportError:
             raise ImportError(
                 "Install CosyVoice: git clone https://github.com/FunAudioLLM/CosyVoice && cd CosyVoice && pip install -e ."
             )
-        self._model = CosyVoice2(self._model_id, load_jit=True, load_trt=False)
-        logger.info(f"Loaded CosyVoice model: {self._model_id}")
+        import os
+        import torch
+        target_idx = int(self._device.split(":")[-1]) if "cuda" in self._device else 0
+        with torch.cuda.device(target_idx):
+            self._model = CosyVoice2(self._model_id, load_jit=True, load_trt=False, fp16=True)
+        logger.info(f"Loaded CosyVoice model: {self._model_id} on cuda:{target_idx}, sr={self._model.sample_rate}")
+
+        # ── 预缓存参考音色为 "default"，之后合成走 inference_sft 跳过参考音频处理 ──
+        ref_path = os.environ.get("VOR_COSYVOICE_REFERENCE_AUDIO") \
+            or "/home/xxm/VoxCareAgent/CosyVoice/asset/zero_shot_prompt.wav"
+        try:
+            self._model.add_zero_shot_spk(
+                "希望你以后能够做的比我还好呦。", ref_path, "default",
+            )
+            self._cached_spk_id = "default"
+            logger.info(f"Cached speaker embedding from {ref_path}")
+        except Exception as e:
+            self._cached_spk_id = None
+            logger.warning(f"音色预缓存失败，将走 zero-shot: {e}")
+
+        # ── 预热：合成一句短语触发 JIT 编译 ──
+        try:
+            with torch.cuda.device(target_idx):
+                if self._cached_spk_id:
+                    list(self._model.inference_zero_shot(
+                        "你好", "", "", zero_shot_spk_id=self._cached_spk_id, stream=False,
+                    ))
+                else:
+                    list(self._model.inference_zero_shot(
+                        "你好", "希望你以后能够做的比我还好呦。", ref_path, stream=False,
+                    ))
+            logger.info("CosyVoice warmup done")
+        except Exception as e:
+            logger.warning(f"CosyVoice 预热失败: {e}")
 
     def set_reference_audio(self, audio_data: bytes) -> None:
         """设置参考音频（供后续克隆模式使用，3-10秒最佳）"""
@@ -116,6 +149,29 @@ class CosyVoiceTTS(TTSProvider):
 
         return audio
 
+    @staticmethod
+    def _split_sentences(text: str) -> list[str]:
+        """按中英文标点切句，保留标点。短句合并到 >= min_len 以摊薄 per-call 开销。"""
+        import re
+        parts = re.split(r"(?<=[。！？!?.；;\n])", text)
+        merged: list[str] = []
+        buf = ""
+        min_len = 8
+        for p in parts:
+            p = p.strip()
+            if not p:
+                continue
+            buf += p
+            if len(buf) >= min_len:
+                merged.append(buf)
+                buf = ""
+        if buf:
+            if merged:
+                merged[-1] = merged[-1] + buf
+            else:
+                merged.append(buf)
+        return merged
+
     async def synthesize_stream(
         self,
         text: str,
@@ -123,37 +179,58 @@ class CosyVoiceTTS(TTSProvider):
         speaker: Optional[str] = None,
     ) -> AsyncIterator[bytes]:
         """
-        流式合成（边生成边输出）
+        句级流式合成：按标点切句，每句用**非流式** zero-shot 推理
+        （实测非流式 RTF≈0.97，CosyVoice2 流式 RTF≈5.7 慢 6 倍）。
 
-        CosyVoice 2 支持流式 token 预测，首字节延迟 < 150ms。
-        使用 asyncio.Queue 桥接同步生成器与异步迭代器，避免阻塞事件循环。
+        首句合成完立即推送，后续句在前句播放期间生成，感知延迟 ~1s。
 
         Yields:
-            音频数据块（PCM 格式）
+            每句的完整 PCM 字节
         """
         self._ensure_model()
-        spk = speaker or self._default_speaker
         loop = asyncio.get_running_loop()
 
-        # 使用 Queue 桥接：在线程中运行同步生成器，逐块推入 Queue
-        queue: asyncio.Queue[Optional[bytes]] = asyncio.Queue(maxsize=8)
+        sentences = self._split_sentences(text) or [text]
+        import time as _time
+        logger.info(f"[TTS-TIMER] split into {len(sentences)} sentences: {[len(s) for s in sentences]}")
+
+        queue: asyncio.Queue[Optional[bytes]] = asyncio.Queue(maxsize=4)
+        t_call = _time.perf_counter()
+
+        def _synth_one(sent: str) -> bytes:
+            """非流式合成一句。"""
+            import torch
+            if self._cached_spk_id:
+                chunks = [c["tts_speech"] for c in self._model.inference_zero_shot(
+                    sent, "", "", zero_shot_spk_id=self._cached_spk_id, stream=False,
+                )]
+            else:
+                import os
+                ref_path = os.environ.get("VOR_COSYVOICE_REFERENCE_AUDIO") \
+                    or "/home/xxm/VoxCareAgent/CosyVoice/asset/zero_shot_prompt.wav"
+                chunks = [c["tts_speech"] for c in self._model.inference_zero_shot(
+                    sent, "希望你以后能够做的比我还好呦。", ref_path, stream=False,
+                )]
+            tensor = torch.cat(chunks, dim=-1) if len(chunks) > 1 else chunks[0]
+            return self._tensor_to_pcm(tensor)
 
         async def _producer():
-            """在线程池中运行同步生成器，将块推入 queue"""
-            def _run_sync():
-                try:
-                    for chunk in self._model.inference_sft(text, spk, stream=True):
-                        pcm = self._tensor_to_pcm(chunk["tts_speech"])
-                        # 从工作线程安全地放入 asyncio Queue
-                        asyncio.run_coroutine_threadsafe(
-                            queue.put(pcm), loop
-                        ).result(timeout=5.0)
-                finally:
-                    asyncio.run_coroutine_threadsafe(
-                        queue.put(None), loop  # sentinel: 生成结束
-                    ).result(timeout=5.0)
-
-            await loop.run_in_executor(None, _run_sync)
+            try:
+                for idx, sent in enumerate(sentences):
+                    t_s = _time.perf_counter()
+                    pcm = await loop.run_in_executor(None, _synth_one, sent)
+                    audio_ms = (len(pcm) // 2) / 24.0
+                    wall_ms = (_time.perf_counter() - t_s) * 1000
+                    rtf = wall_ms / audio_ms if audio_ms else 0
+                    tag = "FIRST" if idx == 0 else f"#{idx}"
+                    logger.info(
+                        f"[TTS-TIMER] sent{tag} chars={len(sent)} wall={wall_ms:.0f}ms "
+                        f"audio={audio_ms:.0f}ms RTF={rtf:.2f} "
+                        f"from_call={(_time.perf_counter()-t_call)*1000:.0f}ms"
+                    )
+                    await queue.put(pcm)
+            finally:
+                await queue.put(None)
 
         # 启动后台生产者任务
         producer_task = asyncio.create_task(_producer())
@@ -169,9 +246,20 @@ class CosyVoiceTTS(TTSProvider):
                 producer_task.cancel()
 
     def _synthesize_standard(self, text: str, speaker: str) -> bytes:
-        """标准预设音色合成"""
-        result = self._model.inference_sft(text, speaker, stream=False)
-        audio_tensor = next(result)["tts_speech"]
+        """有缓存 spk_id 时走 zero_shot 快路径（跳过参考音频处理）。"""
+        if self._cached_spk_id:
+            chunks = [c["tts_speech"] for c in self._model.inference_zero_shot(
+                text, "", "", zero_shot_spk_id=self._cached_spk_id, stream=False,
+            )]
+        else:
+            import os
+            ref_path = os.environ.get("VOR_COSYVOICE_REFERENCE_AUDIO") \
+                or "/home/xxm/VoxCareAgent/CosyVoice/asset/zero_shot_prompt.wav"
+            chunks = [c["tts_speech"] for c in self._model.inference_zero_shot(
+                text, "希望你以后能够做的比我还好呦。", ref_path, stream=False,
+            )]
+        import torch
+        audio_tensor = torch.cat(chunks, dim=-1) if len(chunks) > 1 else chunks[0]
         return self._tensor_to_pcm(audio_tensor)
 
     def _synthesize_clone(self, text: str, reference_audio: bytes) -> bytes:

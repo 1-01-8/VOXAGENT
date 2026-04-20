@@ -1,0 +1,3 @@
+{"timestamp": 1776676828.4823437, "session_id": "2b6de570-6d3c-4c80-aa4e-3590c631d3bb", "event_type": "turn", "turn_index": 1, "user_text": "你好", "agent_text": "你好！很高兴遇见你。今天天气不错，是个聊天的好日子呢。你在忙什么呢？", "emotion": "neutral", "intent": "chitchat", "tools_called": []}
+{"timestamp": 1776676851.1936212, "session_id": "2b6de570-6d3c-4c80-aa4e-3590c631d3bb", "event_type": "turn", "turn_index": 2, "user_text": "我想查询你们全系列产品的报价", "agent_text": "您好！感谢您对我们公司的关注。为了更好地为您提供服务，请问您可以告诉我一下您具体需要哪些产品呢？这样我可以直接为您查询相关的产品报价。或者，如果您能提供更多的信息，我也可以帮您整理一份详细的报价单。期待您的回复！", "emotion": "neutral", "intent": "knowledge", "tools_called": []}
+{"timestamp": 1776676873.474781, "session_id": "2b6de570-6d3c-4c80-aa4e-3590c631d3bb", "event_type": "session_end", "total_turns": 2, "resolution": ""}

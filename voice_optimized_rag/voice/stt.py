@@ -102,5 +102,12 @@ def create_stt(provider: str, **kwargs) -> STTProvider:
             model_id=kwargs.get("model_id", "iic/SenseVoiceSmall"),
             device=kwargs.get("device", "cuda:0"),
         )
+    elif provider == "siliconflow":
+        from voice_optimized_rag.voice.siliconflow_stt import SiliconFlowSTT
+        return SiliconFlowSTT(
+            api_key=kwargs["api_key"],
+            model=kwargs.get("sf_stt_model", "FunAudioLLM/SenseVoiceSmall"),
+            base_url=kwargs.get("sf_base_url", "https://api.siliconflow.cn/v1"),
+        )
     else:
         raise ValueError(f"Unknown STT provider: {provider}")

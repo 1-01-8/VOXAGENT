@@ -59,8 +59,8 @@ class VORConfig(BaseSettings):
     chunk_overlap: int = 50
 
     # Voice settings
-    stt_provider: Literal["whisper", "deepgram", "openai", "sensevoice", "none", ""] = "sensevoice"
-    tts_provider: Literal["openai", "elevenlabs", "edge", "cosyvoice", "none", ""] = "cosyvoice"
+    stt_provider: Literal["whisper", "deepgram", "openai", "sensevoice", "siliconflow", "none", ""] = "sensevoice"
+    tts_provider: Literal["openai", "elevenlabs", "edge", "cosyvoice", "siliconflow", "none", ""] = "cosyvoice"
     whisper_model: str = "base.en"
     sample_rate: int = 16000
     vad_aggressiveness: int = 2
@@ -74,6 +74,16 @@ class VORConfig(BaseSettings):
     cosyvoice_device: str = "cuda:0"
     cosyvoice_default_speaker: str = "中文女"
     cosyvoice_reference_audio: str = ""
+
+    # SiliconFlow Cloud Voice API (FunAudioLLM/SenseVoiceSmall + CosyVoice2)
+    siliconflow_api_key: str = ""
+    siliconflow_base_url: str = "https://api.siliconflow.cn/v1"
+    siliconflow_stt_model: str = "FunAudioLLM/SenseVoiceSmall"
+    siliconflow_tts_model: str = "FunAudioLLM/CosyVoice2-0.5B"
+    siliconflow_tts_voice: str = "alex"       # 预置音色后缀：alex/anna/bella/...
+    siliconflow_tts_sample_rate: int = 24000
+    siliconflow_tts_format: str = "pcm"
+    siliconflow_tts_speed: float = 1.0
 
     # Dialogue settings
     intent_model: str = ""  # empty = use main LLM

@@ -1,0 +1,3 @@
+{"timestamp": 1776676742.2204719, "session_id": "ee3d504a-331e-4bde-8814-991744fd32bd", "event_type": "turn", "turn_index": 1, "user_text": "你好吗", "agent_text": "你好！我很好，谢谢你的关心。你最近怎么样？有没有什么有趣的事情分享一下呢？", "emotion": "neutral", "intent": "chitchat", "tools_called": []}
+{"timestamp": 1776676765.4951024, "session_id": "ee3d504a-331e-4bde-8814-991744fd32bd", "event_type": "turn", "turn_index": 2, "user_text": "给我报价", "agent_text": "请您提供具体的产品名称或编号，以便我为您查询最新的报价信息。如果有其他问题，也可以一并告知哦！", "emotion": "neutral", "intent": "task", "tools_called": []}
+{"timestamp": 1776676769.091718, "session_id": "ee3d504a-331e-4bde-8814-991744fd32bd", "event_type": "session_end", "total_turns": 2, "resolution": ""}

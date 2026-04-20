@@ -1,0 +1,3 @@
+{"timestamp": 1776676428.896998, "session_id": "6c72a365-3378-4e3d-ac9e-7fd3638dc22d", "event_type": "turn", "turn_index": 1, "user_text": "你好，你是谁", "agent_text": "你好！我是Qwen，来自阿里云的大规模语言模型。很高兴认识你！你可以叫我Qwen哦。你在做什么呢？我们可以聊聊日常的话题。", "emotion": "neutral", "intent": "chitchat", "tools_called": []}
+{"timestamp": 1776676502.800001, "session_id": "6c72a365-3378-4e3d-ac9e-7fd3638dc22d", "event_type": "turn", "turn_index": 2, "user_text": "好，我是一个顾客", "agent_text": "您好！很高兴您来到这里。作为您的顾客，有什么我可以为您效劳的吗？无论是咨询产品信息还是寻求帮助，都请尽管告诉我哦！我会尽力提供最优质的服务。", "emotion": "neutral", "intent": "chitchat", "tools_called": []}
+{"timestamp": 1776676552.1584535, "session_id": "6c72a365-3378-4e3d-ac9e-7fd3638dc22d", "event_type": "session_end", "total_turns": 2, "resolution": ""}

@@ -24,18 +24,31 @@ class OllamaProvider(LLMProvider):
         self._client = httpx.AsyncClient(timeout=60.0)
 
     async def generate(self, prompt: str, context: str = "") -> str:
+        import time, logging
+        _log = logging.getLogger("ollama")
         messages = self._build_messages(prompt, context)
+        t0 = time.perf_counter()
         response = await self._client.post(
             f"{self._base_url}/api/chat",
             json={
                 "model": self._model,
                 "messages": messages,
                 "stream": False,
-                "options": {"temperature": self._temperature},
+                "options": {"temperature": self._temperature, "num_predict": 120},
             },
         )
         response.raise_for_status()
-        return response.json()["message"]["content"]
+        data = response.json()
+        ms = (time.perf_counter() - t0) * 1000
+        eval_count = data.get("eval_count", 0)
+        eval_dur_ms = data.get("eval_duration", 0) / 1e6
+        prompt_eval_ms = data.get("prompt_eval_duration", 0) / 1e6
+        _log.info(
+            f"[LLM-TIMER] wall={ms:.0f}ms prompt_eval={prompt_eval_ms:.0f}ms "
+            f"gen={eval_dur_ms:.0f}ms tokens={eval_count} "
+            f"tok/s={eval_count/(eval_dur_ms/1000) if eval_dur_ms else 0:.1f}"
+        )
+        return data["message"]["content"]
 
     async def stream(self, prompt: str, context: str = "") -> AsyncIterator[str]:
         messages = self._build_messages(prompt, context)
@@ -46,7 +59,7 @@ class OllamaProvider(LLMProvider):
                 "model": self._model,
                 "messages": messages,
                 "stream": True,
-                "options": {"temperature": self._temperature},
+                "options": {"temperature": self._temperature, "num_predict": 120},
             },
         ) as response:
             response.raise_for_status()

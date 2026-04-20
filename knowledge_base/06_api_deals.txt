@@ -1,0 +1,40 @@
+NovaCRM API — Deals Endpoint
+
+List Deals:
+GET /v2/deals
+Query parameters: limit, cursor, sort, stage, owner_id, pipeline_id, value_min, value_max
+Returns a paginated list of deals.
+
+Get Deal:
+GET /v2/deals/{deal_id}
+Returns a single deal with all fields, associated contacts, and activity history.
+
+Create Deal:
+POST /v2/deals
+Required fields: name, pipeline_id
+Optional fields: stage_id, value, currency, expected_close_date, owner_id, contact_ids, company_id, custom_fields
+Returns the created deal.
+
+Update Deal:
+PATCH /v2/deals/{deal_id}
+Send only the fields to update. Changing stage_id triggers pipeline automation.
+
+Move Deal Stage:
+POST /v2/deals/{deal_id}/move
+Body: { "stage_id": "...", "note": "..." }
+Moves a deal to a new stage and optionally adds a note. Triggers any configured stage-change automations.
+
+Win/Lose Deal:
+POST /v2/deals/{deal_id}/win
+POST /v2/deals/{deal_id}/lose
+Body: { "reason": "...", "note": "..." }
+Marks a deal as won or lost with an optional reason and note.
+
+Deal Forecast:
+GET /v2/deals/forecast
+Query parameters: period (monthly, quarterly, yearly), pipeline_id
+Returns AI-powered revenue forecast based on current pipeline, historical close rates, and deal health scores.
+
+Deal Health Score:
+GET /v2/deals/{deal_id}/health
+Returns an AI-generated health score (0-100) with risk factors and recommended actions. Factors include: time in stage, engagement level, competitor mentions, and sentiment trends.

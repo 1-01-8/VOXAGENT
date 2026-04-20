@@ -1,0 +1,44 @@
+NovaCRM API — Contacts Endpoint
+
+List Contacts:
+GET /v2/contacts
+Query parameters: limit, cursor, sort, email, company, created_after, created_before, tag
+Returns a paginated list of contacts.
+
+Get Contact:
+GET /v2/contacts/{contact_id}
+Returns a single contact with all fields and associated data.
+
+Create Contact:
+POST /v2/contacts
+Required fields: email OR phone (at least one)
+Optional fields: first_name, last_name, company, title, phone, address, tags, custom_fields
+Returns the created contact with generated ID.
+
+Update Contact:
+PATCH /v2/contacts/{contact_id}
+Send only the fields you want to update. Returns the updated contact.
+
+Delete Contact:
+DELETE /v2/contacts/{contact_id}
+Soft-deletes the contact. Can be restored within 30 days from the trash.
+
+Merge Contacts:
+POST /v2/contacts/merge
+Body: { "primary_id": "...", "secondary_ids": ["...", "..."] }
+Merges multiple duplicate contacts into one. All interactions are preserved.
+
+Bulk Operations:
+POST /v2/contacts/bulk
+Supports bulk create, update, and delete operations.
+Maximum 1,000 contacts per request. Processed asynchronously for large batches.
+Returns a job_id that can be polled for status.
+
+Contact Timeline:
+GET /v2/contacts/{contact_id}/timeline
+Returns all interactions (emails, calls, meetings, notes, deals) in chronological order.
+Supports filtering by interaction type and date range.
+
+Contact Enrichment:
+POST /v2/contacts/{contact_id}/enrich
+Triggers AI-powered data enrichment. Automatically fills in company info, social profiles, and job details from public sources. Costs $0.05 per enrichment.

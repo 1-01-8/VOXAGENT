@@ -1,0 +1,14 @@
+NovaCRM Company Overview
+
+NovaCRM is an AI-powered customer relationship management platform founded in 2021 in San Francisco. The company serves over 15,000 businesses worldwide, ranging from small startups to Fortune 500 enterprises.
+
+Our mission is to make every customer interaction intelligent, personalized, and effortless. NovaCRM combines traditional CRM capabilities with advanced AI features including predictive lead scoring, automated email campaigns, intelligent call routing, and real-time sentiment analysis.
+
+NovaCRM was named a Gartner Magic Quadrant Leader in 2024 and has raised $180M in Series C funding led by Sequoia Capital. The platform processes over 2 billion customer interactions per month across email, phone, chat, and social media channels.
+
+Key differentiators:
+- AI-first architecture with models trained on 500M+ customer interactions
+- Real-time analytics dashboard with customizable KPIs
+- Native integrations with 200+ business tools
+- SOC2 Type II and HIPAA compliant
+- 99.99% uptime SLA for Enterprise customers

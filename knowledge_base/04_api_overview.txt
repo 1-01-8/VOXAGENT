@@ -1,0 +1,52 @@
+NovaCRM API Documentation — Overview
+
+The NovaCRM API is a RESTful API that provides programmatic access to all CRM data and functionality. All API endpoints use HTTPS and return JSON responses.
+
+Base URL: https://api.novacrm.com/v2
+
+Authentication:
+All API requests require authentication via API key. Include your API key in the Authorization header:
+Authorization: Bearer nova_key_xxxxxxxxxxxxxxxx
+
+API keys can be generated from Settings > Integrations > API Keys in the NovaCRM dashboard. Each key can be scoped to specific permissions (read-only, read-write, admin).
+
+Rate Limits:
+- Starter: 1,000 requests per day
+- Professional: 10,000 requests per day
+- Business: 100,000 requests per day
+- Enterprise: Custom (typically 1,000,000+ per day)
+
+Rate limit headers are included in all responses:
+- X-RateLimit-Limit: Maximum requests allowed
+- X-RateLimit-Remaining: Requests remaining in current window
+- X-RateLimit-Reset: Unix timestamp when the rate limit resets
+
+When rate limited, the API returns HTTP 429 with a Retry-After header.
+
+Pagination:
+List endpoints support cursor-based pagination:
+- limit: Number of results per page (default: 20, max: 100)
+- cursor: Cursor token from previous response
+- sort: Field to sort by (prefix with - for descending)
+
+Webhooks:
+Configure webhooks to receive real-time notifications when data changes. Supported events include: contact.created, contact.updated, deal.created, deal.stage_changed, deal.won, deal.lost, ticket.created, ticket.resolved. Webhook payloads are signed with HMAC-SHA256 for verification.
+
+Error Handling:
+All errors return a consistent JSON structure:
+{
+  "error": {
+    "code": "RESOURCE_NOT_FOUND",
+    "message": "Contact with ID 12345 was not found",
+    "status": 404
+  }
+}
+
+Common error codes:
+- 400 BAD_REQUEST: Invalid request parameters
+- 401 UNAUTHORIZED: Missing or invalid API key
+- 403 FORBIDDEN: Insufficient permissions
+- 404 RESOURCE_NOT_FOUND: Requested resource doesn't exist
+- 409 CONFLICT: Resource already exists or version conflict
+- 429 RATE_LIMITED: Too many requests
+- 500 INTERNAL_ERROR: Server error (contact support)

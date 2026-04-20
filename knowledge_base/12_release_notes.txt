@@ -1,0 +1,47 @@
+NovaCRM Release Notes
+
+Version 4.2 (February 2025):
+- NEW: AI-powered call coaching — get real-time suggestions during customer calls
+- NEW: Deal health score with risk factor breakdown
+- NEW: Contact enrichment API endpoint
+- IMPROVED: Email sequence builder with visual flowchart editor
+- IMPROVED: Dashboard load time reduced by 40%
+- FIXED: Calendar sync timezone issue for users in DST transition zones
+- FIXED: CSV import failing for files with special characters in headers
+
+Version 4.1 (January 2025):
+- NEW: Revenue forecasting with AI predictions
+- NEW: Custom objects (Business plan and above)
+- NEW: Arabic language support
+- IMPROVED: Search now supports advanced query syntax (field:value)
+- IMPROVED: Mobile app offline mode now supports deal editing
+- FIXED: Webhook retry logic not respecting backoff intervals
+- FIXED: SSO login redirect loop for some identity providers
+
+Version 4.0 (November 2024):
+- NEW: Complete UI redesign with modern, accessible interface
+- NEW: Workflow automation builder with visual editor
+- NEW: AI chatbot for website chat widget
+- NEW: Team hierarchies and permission templates
+- IMPROVED: API v2 with cursor-based pagination and better error messages
+- IMPROVED: Import wizard with automatic field type detection
+- BREAKING: API v1 deprecated (sunset date: June 2025)
+- FIXED: Multiple performance improvements for organizations with 500K+ contacts
+
+Version 3.9 (September 2024):
+- NEW: Phone system (NovaCRM Voice) with call recording
+- NEW: Real-time sentiment analysis for calls and emails
+- NEW: LinkedIn Sales Navigator integration
+- IMPROVED: Contact deduplication accuracy improved by 35%
+- IMPROVED: Email deliverability monitoring
+- FIXED: Deal pipeline drag-and-drop not working in Firefox
+- FIXED: Report scheduling sending duplicate emails
+
+Version 3.8 (July 2024):
+- NEW: Chat widget (NovaCRM Chat) for website visitor engagement
+- NEW: Predictive lead scoring
+- NEW: Data enrichment from public sources
+- IMPROVED: API rate limits increased by 2x for all plans
+- IMPROVED: Bulk operations now support up to 1,000 records per request
+- FIXED: Contact merge losing custom field values
+- FIXED: Outlook calendar sync creating duplicate events

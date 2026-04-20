@@ -1,0 +1,40 @@
+NovaCRM Security & Compliance
+
+Data Security:
+- All data encrypted in transit (TLS 1.3) and at rest (AES-256)
+- Data stored in SOC2 Type II certified data centers (AWS us-east-1, eu-west-1)
+- Automatic daily backups with 30-day retention
+- Point-in-time recovery available for Enterprise customers
+- Data residency options: US, EU, or Australia
+
+Access Control:
+- Role-based access control (RBAC) with customizable roles
+- Object-level and field-level permissions
+- IP whitelisting (Business and Enterprise plans)
+- Two-factor authentication (2FA) required for all accounts
+- SSO via SAML 2.0 (Business and Enterprise plans)
+- Session management with configurable timeout
+
+Audit & Compliance:
+- Comprehensive audit logs tracking all data access and changes
+- SOC2 Type II certified (report available upon request)
+- GDPR compliant with data processing agreement (DPA)
+- CCPA compliant
+- HIPAA compliance available as Enterprise add-on ($500/month)
+- Annual third-party penetration testing by CrowdStrike
+- Bug bounty program via HackerOne
+
+Data Handling:
+- Right to deletion: Users can request complete data deletion
+- Data export: Full data export available in JSON or CSV format
+- Data retention: Configurable retention policies per data type
+- Sub-processors: List of sub-processors available at novacrm.com/subprocessors
+- AI model training: Customer data is NOT used to train shared AI models. Enterprise customers can opt-in to train custom models on their own data.
+
+Incident Response:
+- 24/7 security operations center (SOC)
+- Mean time to detect (MTTD): < 15 minutes
+- Mean time to respond (MTTR): < 1 hour
+- Incident notification within 72 hours per GDPR requirements
+- Post-incident reports provided within 5 business days
+- Status page: status.novacrm.com

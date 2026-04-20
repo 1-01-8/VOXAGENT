@@ -1,0 +1,53 @@
+NovaCRM Troubleshooting Guide
+
+Email Sync Issues:
+Problem: Emails not appearing in contact timeline
+Solution: Go to Settings > Email and click "Reconnect" for your email account. If using Gmail, ensure you've granted "full access" permissions. Check that the sender/recipient email matches a contact in NovaCRM. Note: email sync can take up to 5 minutes for new emails.
+
+Problem: Email tracking (opens/clicks) not working
+Solution: Email tracking requires HTML emails (not plain text). Some email clients block tracking pixels — this is expected behavior. Corporate email servers may strip tracking pixels. Check Settings > Email > Tracking to ensure tracking is enabled.
+
+Login Issues:
+Problem: "Invalid credentials" error
+Solution: Ensure you're using the correct email address (check for typos). Use the "Forgot Password" link to reset your password. If using SSO, you must log in through your identity provider, not the NovaCRM login page.
+
+Problem: Two-factor authentication (2FA) locked out
+Solution: Use one of your backup codes (provided during 2FA setup). If you don't have backup codes, contact your organization's NovaCRM admin to reset 2FA. If you're the only admin, contact support@novacrm.com with identity verification.
+
+API Issues:
+Problem: Getting 401 Unauthorized errors
+Solution: Check that your API key is included in the Authorization header as "Bearer nova_key_xxx". Verify the key hasn't been revoked in Settings > API Keys. Ensure the key has the required permissions for the endpoint you're calling.
+
+Problem: Getting 429 Rate Limited errors
+Solution: Check the X-RateLimit-Remaining header in your responses to monitor usage. Implement exponential backoff in your code. Consider upgrading your plan for higher rate limits. Use bulk endpoints instead of individual calls for batch operations.
+
+Problem: Webhook not receiving events
+Solution: Verify the webhook URL is publicly accessible (not localhost). Check that the URL returns a 200 response within 10 seconds. NovaCRM retries failed webhooks 3 times with exponential backoff. Check the webhook delivery log in Settings > Webhooks.
+
+Import Issues:
+Problem: CSV import failing or contacts missing
+Solution: Ensure CSV is UTF-8 encoded. Check that required fields (email or phone) are present. Remove any rows with more than 100 custom field values. Maximum file size is 50MB. For large files (>100,000 rows), use the API bulk import endpoint instead.
+
+Problem: Duplicate contacts after import
+Solution: Enable "Skip duplicates" in the import wizard. Duplicates are matched by email address. Use the Merge Contacts feature (Contacts > Actions > Merge) to combine duplicates. Set up a deduplication workflow to automatically detect and merge duplicates going forward.
+
+Performance Issues:
+Problem: Dashboard loading slowly
+Solution: Reduce the date range of your reports. Use saved views instead of complex live filters. If you have >500,000 contacts, contact support for index optimization. Clear browser cache and try incognito mode to rule out extensions.
+
+Problem: Search results seem incomplete
+Solution: NovaCRM search indexes update every 60 seconds. Recently created/modified records may not appear immediately. Use the API for real-time search needs. Advanced search supports field-specific queries: "company:Acme AND tag:enterprise".
+
+Mobile App Issues:
+Problem: Push notifications not working
+Solution: Ensure notifications are enabled in both the NovaCRM app settings AND your phone's system settings. On iOS, go to Settings > NovaCRM > Notifications. On Android, go to Settings > Apps > NovaCRM > Notifications. Log out and log back in to refresh the push token.
+
+Problem: Offline mode not syncing
+Solution: Ensure you have a stable internet connection. Open the app and wait for the sync indicator to complete. If sync is stuck, force-close the app and reopen it. Maximum offline duration is 7 days — after that, a full re-sync is required.
+
+Contact Support:
+- Email: support@novacrm.com
+- Phone: +1 (888) 555-NOVA (available 8am-8pm ET, Mon-Fri)
+- Live chat: Available in the NovaCRM dashboard (Business and Enterprise plans)
+- Status page: status.novacrm.com
+- Knowledge base: help.novacrm.com

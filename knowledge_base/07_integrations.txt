@@ -1,0 +1,53 @@
+NovaCRM Integrations
+
+NovaCRM integrates with 200+ business tools across the following categories:
+
+Email:
+- Gmail (two-way sync, email tracking, templates)
+- Outlook/Office 365 (two-way sync, calendar integration)
+- SMTP/IMAP (any email provider via custom configuration)
+
+Calendar:
+- Google Calendar (meeting scheduling, availability sync)
+- Outlook Calendar (meeting scheduling, availability sync)
+- Calendly (automatic meeting logging)
+
+Communication:
+- Slack (deal notifications, @mentions, slash commands)
+- Microsoft Teams (deal notifications, meeting scheduling)
+- Zoom (automatic meeting recording and transcription)
+- Twilio (custom SMS and voice integration)
+
+Marketing:
+- Mailchimp (contact sync, campaign tracking)
+- HubSpot Marketing (lead attribution, campaign sync)
+- Google Ads (conversion tracking, audience sync)
+- Facebook Ads (lead ads sync, conversion tracking)
+- LinkedIn Sales Navigator (profile enrichment, InMail tracking)
+
+Payments:
+- Stripe (invoice creation, payment tracking, subscription management)
+- PayPal (payment tracking)
+- QuickBooks (invoice sync, revenue reporting)
+- Xero (invoice sync, financial reporting)
+
+Support:
+- Zendesk (ticket sync, customer context)
+- Intercom (conversation sync, lead qualification)
+- Freshdesk (ticket sync)
+
+Development:
+- GitHub (issue tracking, PR notifications)
+- Jira (issue sync, sprint tracking)
+- Salesforce (bi-directional data sync for migration)
+
+Data & Analytics:
+- Snowflake (data warehouse sync)
+- BigQuery (analytics export)
+- Tableau (live dashboard connection)
+- Looker (embedded analytics)
+
+Custom integrations can be built using the NovaCRM API and webhook system. Enterprise customers get access to dedicated integration development support.
+
+Setting Up Integrations:
+Navigate to Settings > Integrations in the NovaCRM dashboard. Click "Connect" next to the desired integration. Most integrations use OAuth 2.0 and can be set up in under 2 minutes. Some integrations (like Snowflake) require additional configuration.

@@ -1,0 +1,46 @@
+NovaCRM Frequently Asked Questions
+
+Q: How long is the free trial?
+A: The free trial lasts 14 days and includes full access to Business plan features. No credit card required. At the end of the trial, you can choose a plan or your account will be downgraded to a limited free tier (up to 100 contacts).
+
+Q: Can I change my plan at any time?
+A: Yes, you can upgrade or downgrade at any time from Settings > Billing. Upgrades take effect immediately and are prorated. Downgrades take effect at the end of the current billing cycle.
+
+Q: Is there a free plan?
+A: Yes, after the trial ends you can use the free tier with up to 100 contacts, basic contact management, and limited email integration. The free tier does not include phone, chat, automation, or AI features.
+
+Q: What payment methods do you accept?
+A: We accept all major credit cards (Visa, Mastercard, American Express, Discover), ACH bank transfer (US only), and wire transfer (Enterprise plan only). We do not accept PayPal or cryptocurrency.
+
+Q: Can I get a refund?
+A: We offer a 30-day money-back guarantee for annual plans. Monthly plans can be cancelled at any time with no refund for the current month. Enterprise contracts have custom cancellation terms.
+
+Q: How does per-user pricing work?
+A: Each person who logs into NovaCRM needs a license. Contacts, leads, and external users do not require licenses. You can add or remove users at any time. Removed users' data is preserved and reassigned.
+
+Q: Do you offer discounts for nonprofits or education?
+A: Yes, we offer 50% off any plan for registered nonprofits and educational institutions. Contact sales@novacrm.com with proof of status to apply.
+
+Q: Can I import data from Salesforce?
+A: Yes, NovaCRM has a dedicated Salesforce migration tool that maps all standard and custom objects. The migration typically takes 1-4 hours depending on data volume. Custom fields, relationships, attachments, and activity history are all preserved. We recommend scheduling a migration call with our team.
+
+Q: What languages does NovaCRM support?
+A: The NovaCRM interface is available in 12 languages: English, Spanish, French, German, Portuguese, Italian, Dutch, Swedish, Japanese, Korean, Chinese (Simplified), and Arabic. The AI chatbot supports 25 languages for customer-facing interactions.
+
+Q: Is my data safe?
+A: Yes. NovaCRM is SOC2 Type II certified, GDPR compliant, and offers HIPAA compliance as an add-on. All data is encrypted in transit and at rest. We do not use customer data to train shared AI models. See our security page at novacrm.com/security for full details.
+
+Q: What's the uptime SLA?
+A: Professional and Business plans include a 99.9% uptime SLA. Enterprise plans include a 99.99% uptime SLA. Current status is available at status.novacrm.com. In 2024, actual uptime was 99.997%.
+
+Q: Can I use NovaCRM offline?
+A: The mobile app supports offline mode for viewing and editing contacts, deals, and notes. Changes sync automatically when you're back online. The web app requires an internet connection.
+
+Q: How do I cancel my account?
+A: Go to Settings > Billing > Cancel Subscription. You'll have the option to export all your data before cancellation. Your data is retained for 30 days after cancellation in case you want to reactivate.
+
+Q: Do you have a partner/reseller program?
+A: Yes, NovaCRM has a partner program for agencies, consultants, and technology partners. Partners receive commission on referrals, co-marketing support, and early access to new features. Apply at novacrm.com/partners.
+
+Q: What's on the product roadmap?
+A: We publish a public roadmap at novacrm.com/roadmap. Upcoming features include: AI email writing assistant (Q2 2025), advanced territory management (Q2 2025), custom AI model marketplace (Q3 2025), and native WhatsApp integration (Q3 2025).

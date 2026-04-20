@@ -1,0 +1,22 @@
+NovaCRM Product Features
+
+Contact Management:
+NovaCRM provides a unified customer profile that aggregates data from all touchpoints. Each contact record includes interaction history, purchase history, support tickets, sentiment scores, and AI-generated relationship health indicators. Contacts can be organized into segments, lists, and custom hierarchies. The system supports up to 50 million contacts per organization.
+
+Deal Pipeline:
+The visual deal pipeline supports unlimited custom stages, weighted probability scoring, and AI-powered deal health predictions. Drag-and-drop interface for moving deals between stages. Automated alerts when deals are at risk of stalling. Revenue forecasting uses historical close rates and current pipeline velocity.
+
+Email Automation:
+Create multi-step email sequences with conditional branching based on recipient behavior (opens, clicks, replies). AI-generated subject lines increase open rates by an average of 23%. Built-in A/B testing for subject lines, send times, and content variations. Supports dynamic content personalization with merge fields and conditional blocks.
+
+Phone System (NovaCRM Voice):
+Built-in VoIP phone system with call recording, transcription, and real-time sentiment analysis. AI-powered call coaching provides real-time suggestions during customer calls. Automatic call logging and CRM record updates. Supports local and toll-free numbers in 40+ countries.
+
+Chat Widget (NovaCRM Chat):
+Embeddable website chat widget with AI chatbot capabilities. The chatbot can answer common questions, qualify leads, and schedule meetings before routing to a human agent. Supports file sharing, screen sharing, and video calls within the chat interface. Available in 25 languages.
+
+Analytics & Reporting:
+Real-time dashboards with 50+ pre-built report templates. Custom report builder with drag-and-drop interface. Supports data export to CSV, Excel, and PDF. Scheduled report delivery via email. Advanced analytics include cohort analysis, funnel visualization, and attribution modeling.
+
+Workflow Automation:
+Visual workflow builder for automating repetitive tasks. Trigger workflows based on events (new lead, deal stage change, ticket created) or schedules. Actions include sending emails, creating tasks, updating records, calling webhooks, and routing to team members. Supports conditional logic, delays, and parallel branches.

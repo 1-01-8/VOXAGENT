@@ -1,0 +1,2 @@
+{"timestamp": 1776605212.3770208, "session_id": "ddc686ab-ccea-470a-af41-395199ce8818", "event_type": "turn", "turn_index": 1, "user_text": "你好，帮我查一下订单状态", "agent_text": "您好，请问您需要查询哪个订单的状态呢？您可以提供订单号或者下单时使用的手机号，我来帮您查询。", "emotion": "neutral", "intent": "task", "tools_called": []}
+{"timestamp": 1776605212.3803551, "session_id": "ddc686ab-ccea-470a-af41-395199ce8818", "event_type": "session_end", "total_turns": 1, "resolution": ""}

@@ -1,0 +1,2 @@
+{"timestamp": 1776605542.5571089, "session_id": "d04777c2-9663-4c06-85ad-aba2001d982b", "event_type": "turn", "turn_index": 1, "user_text": "你好", "agent_text": "你好呀！😊 今天过得怎么样？有什么有趣的事情想分享吗？", "emotion": "neutral", "intent": "chitchat", "tools_called": []}
+{"timestamp": 1776605542.558246, "session_id": "d04777c2-9663-4c06-85ad-aba2001d982b", "event_type": "session_end", "total_turns": 1, "resolution": ""}

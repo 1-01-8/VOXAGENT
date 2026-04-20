@@ -1,0 +1,46 @@
+NovaCRM Getting Started Guide
+
+Step 1: Create Your Account
+Visit app.novacrm.com/signup and enter your email address. You'll receive a verification email within 30 seconds. Click the link to activate your account and set your password. No credit card required for the 14-day free trial.
+
+Step 2: Set Up Your Organization
+After signing in, you'll be guided through initial setup:
+- Company name and industry
+- Team size and primary use case
+- Timezone and currency preferences
+- Logo upload (displayed in emails and chat widget)
+
+Step 3: Import Your Data
+NovaCRM supports importing contacts and deals from:
+- CSV/Excel files (up to 500,000 rows per import)
+- Salesforce (full migration tool with field mapping)
+- HubSpot (full migration tool with field mapping)
+- Pipedrive (contact and deal import)
+- Google Contacts
+- Outlook Contacts
+
+The import wizard guides you through field mapping and deduplication. Large imports (>50,000 contacts) are processed in the background and typically complete within 30 minutes.
+
+Step 4: Connect Your Email
+Go to Settings > Email and connect your Gmail or Outlook account. This enables:
+- Automatic email logging to contact records
+- Send emails directly from NovaCRM
+- Email open and click tracking
+- Email templates and sequences
+
+Step 5: Set Up Your Pipeline
+Navigate to Deals > Pipeline Settings to customize your sales stages. Default stages are: Lead, Qualified, Proposal, Negotiation, Won, Lost. You can rename, add, or remove stages. Set probability percentages for revenue forecasting.
+
+Step 6: Invite Your Team
+Go to Settings > Team to invite colleagues. Assign roles (Admin, Manager, Sales Rep, Read-Only) to control access. Managers can see their team's activities and pipeline. Admins have full access to all settings.
+
+Step 7: Install Integrations
+Connect your essential tools from Settings > Integrations. Recommended first integrations: email provider, calendar, and Slack/Teams for notifications.
+
+Step 8: Customize Your Workspace
+- Create custom fields for contacts and deals
+- Set up saved views and filters
+- Configure notification preferences
+- Set up workflow automations for common tasks
+
+Need help? Book a free 30-minute onboarding call at novacrm.com/onboarding or contact support@novacrm.com.

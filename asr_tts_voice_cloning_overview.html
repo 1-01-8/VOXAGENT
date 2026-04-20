@@ -1,0 +1,249 @@
+
+<style>
+  .wrap { padding: 1rem 0; font-size: 13px; color: var(--color-text-primary); }
+  .tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tab { padding: 6px 14px; border-radius: 20px; border: 1px solid var(--color-border-secondary); cursor: pointer; font-size: 12px; font-weight: 500; background: var(--color-background-secondary); color: var(--color-text-secondary); transition: all .15s; }
+  .tab.active { background: var(--color-background-primary); color: var(--color-text-primary); border-color: var(--color-border-primary); }
+  .section { display: none; }
+  .section.active { display: block; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; padding: 8px 10px; font-size: 11px; font-weight: 500; color: var(--color-text-secondary); border-bottom: 1px solid var(--color-border-tertiary); white-space: nowrap; }
+  td { padding: 9px 10px; border-bottom: 1px solid var(--color-border-tertiary); vertical-align: top; line-height: 1.5; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--color-background-secondary); }
+  .name { font-weight: 500; color: var(--color-text-primary); }
+  .sub { font-size: 11px; color: var(--color-text-secondary); margin-top: 2px; }
+  .badge { display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 10px; margin: 1px 2px 1px 0; white-space: nowrap; }
+  .b-green { background: #EAF3DE; color: #3B6D11; }
+  .b-blue  { background: #E6F1FB; color: #185FA5; }
+  .b-amber { background: #FAEEDA; color: #854F0B; }
+  .b-gray  { background: #F1EFE8; color: #5F5E5A; }
+  .b-teal  { background: #E1F5EE; color: #0F6E56; }
+  .b-coral { background: #FAECE7; color: #993C1D; }
+  @media (prefers-color-scheme: dark) {
+    .b-green { background: #173404; color: #C0DD97; }
+    .b-blue  { background: #042C53; color: #B5D4F4; }
+    .b-amber { background: #412402; color: #FAC775; }
+    .b-gray  { background: #2C2C2A; color: #D3D1C7; }
+    .b-teal  { background: #04342C; color: #9FE1CB; }
+    .b-coral { background: #4A1B0C; color: #F5C4B3; }
+  }
+  .note { font-size: 11px; color: var(--color-text-tertiary); margin-top: 14px; line-height: 1.7; }
+  .rec { font-size: 11px; background: var(--color-background-secondary); border-left: 3px solid #1D9E75; padding: 8px 12px; border-radius: 0 6px 6px 0; margin-bottom: 12px; color: var(--color-text-secondary); }
+</style>
+<div class="wrap">
+  <div class="tabs">
+    <div class="tab active" onclick="show('asr')">ASR 语音识别</div>
+    <div class="tab" onclick="show('tts')">TTS 语音合成</div>
+    <div class="tab" onclick="show('vc')">音色克隆</div>
+  </div>
+
+  <div class="section active" id="s-asr">
+    <div class="rec">A5000 推荐：<strong>FunASR Paraformer-streaming</strong>（中文）或 <strong>faster-whisper large-v3</strong>（多语言），前者延迟极低，后者精度最高</div>
+    <table>
+      <tr>
+        <th>模型</th><th>流式支持</th><th>参数量</th><th>语言</th><th>延迟特性</th><th>备注</th>
+      </tr>
+      <tr>
+        <td><div class="name">Paraformer-streaming</div><div class="sub">FunASR · 阿里达摩院</div></td>
+        <td><span class="badge b-green">原生流式</span></td>
+        <td>220M</td>
+        <td><span class="badge b-teal">中文</span></td>
+        <td>首字延迟 &lt;200ms</td>
+        <td>CTC 非自回归，工业级中文识别首选，pip 一键安装</td>
+      </tr>
+      <tr>
+        <td><div class="name">SenseVoice-Small</div><div class="sub">FunASR · 阿里</div></td>
+        <td><span class="badge b-blue">分块流式</span></td>
+        <td>234M</td>
+        <td><span class="badge b-teal">中/英/日等</span></td>
+        <td>极快，支持情感/事件检测</td>
+        <td>比 Whisper large 快 15x，多语言且带情绪标签</td>
+      </tr>
+      <tr>
+        <td><div class="name">faster-whisper</div><div class="sub">SYSTRAN · OpenAI Whisper</div></td>
+        <td><span class="badge b-amber">chunked 模拟流</span></td>
+        <td>large-v3: 1.5B<br>small: 244M</td>
+        <td><span class="badge b-teal">99种语言</span></td>
+        <td>chunk 延迟 500ms~2s</td>
+        <td>CTranslate2 量化，精度最好，搭配 whisper-streaming 库用</td>
+      </tr>
+      <tr>
+        <td><div class="name">WeNet</div><div class="sub">Horizon Robotics · 清华</div></td>
+        <td><span class="badge b-green">原生流式</span></td>
+        <td>~70M–200M</td>
+        <td><span class="badge b-teal">中/英</span></td>
+        <td>CTC+Attention 双解码，延迟可配</td>
+        <td>支持 chunk 大小动态调节，生产部署成熟</td>
+      </tr>
+      <tr>
+        <td><div class="name">Moonshine</div><div class="sub">Useful Sensors</div></td>
+        <td><span class="badge b-blue">分块流式</span></td>
+        <td>tiny: 27M<br>base: 61M</td>
+        <td><span class="badge b-gray">英文</span></td>
+        <td>专为边缘设备优化，极低延迟</td>
+        <td>仅英文，但参数量最小，CPU 可跑</td>
+      </tr>
+      <tr>
+        <td><div class="name">NeMo FastConformer</div><div class="sub">NVIDIA</div></td>
+        <td><span class="badge b-green">原生流式</span></td>
+        <td>~115M</td>
+        <td><span class="badge b-gray">英文为主</span></td>
+        <td>NVIDIA 官方优化，TensorRT 加速</td>
+        <td>A5000 上配合 TensorRT 延迟可到 &lt;100ms</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section" id="s-tts">
+    <div class="rec">A5000 推荐：中文场景用 <strong>CosyVoice 2</strong>，英文/多语言用 <strong>Kokoro</strong> 或 <strong>F5-TTS</strong>，极致低延迟用 <strong>Piper</strong></div>
+    <table>
+      <tr>
+        <th>模型</th><th>流式输出</th><th>参数量</th><th>语言</th><th>首字节延迟</th><th>备注</th>
+      </tr>
+      <tr>
+        <td><div class="name">CosyVoice 2</div><div class="sub">阿里达摩院</div></td>
+        <td><span class="badge b-green">原生流式</span></td>
+        <td>~300M</td>
+        <td><span class="badge b-teal">中/英/日/韩</span></td>
+        <td>~150ms</td>
+        <td>流式 token 预测，内置音色克隆，中文质量顶尖</td>
+      </tr>
+      <tr>
+        <td><div class="name">Fish Speech</div><div class="sub">Fish Audio</div></td>
+        <td><span class="badge b-green">原生流式</span></td>
+        <td>~700M</td>
+        <td><span class="badge b-teal">多语言</span></td>
+        <td>~200ms</td>
+        <td>VQGAN 声码器，音质好，支持零样本克隆，有官方推理服务器</td>
+      </tr>
+      <tr>
+        <td><div class="name">F5-TTS / E2-TTS</div><div class="sub">SWivid</div></td>
+        <td><span class="badge b-blue">支持流式</span></td>
+        <td>~335M</td>
+        <td><span class="badge b-teal">中/英</span></td>
+        <td>~300ms</td>
+        <td>Flow Matching，免 vocoder，音质自然，克隆只需3秒参考音</td>
+      </tr>
+      <tr>
+        <td><div class="name">Kokoro</div><div class="sub">hexgrad</div></td>
+        <td><span class="badge b-green">原生流式</span></td>
+        <td>82M</td>
+        <td><span class="badge b-gray">英文为主</span></td>
+        <td>&lt;100ms</td>
+        <td>参数量极小，质量出色，Apache 2.0，CPU/GPU 均可</td>
+      </tr>
+      <tr>
+        <td><div class="name">MeloTTS</div><div class="sub">MyShell AI</div></td>
+        <td><span class="badge b-blue">支持流式</span></td>
+        <td>~50M</td>
+        <td><span class="badge b-teal">中/英/日等</span></td>
+        <td>&lt;150ms</td>
+        <td>VITS 架构，中文带英文词混读效果好，速度极快</td>
+      </tr>
+      <tr>
+        <td><div class="name">XTTS v2</div><div class="sub">Coqui AI</div></td>
+        <td><span class="badge b-green">原生流式</span></td>
+        <td>~456M</td>
+        <td><span class="badge b-teal">17种语言</span></td>
+        <td>~200ms</td>
+        <td>老牌克隆模型，6秒参考音克隆，社区成熟</td>
+      </tr>
+      <tr>
+        <td><div class="name">Piper</div><div class="sub">Rhasspy</div></td>
+        <td><span class="badge b-green">原生流式</span></td>
+        <td>~28M</td>
+        <td><span class="badge b-gray">多语言</span></td>
+        <td>&lt;50ms</td>
+        <td>最轻量，CPU 实时，适合边缘/嵌入延迟极端场景，无克隆</td>
+      </tr>
+      <tr>
+        <td><div class="name">Index-TTS</div><div class="sub">Bilibili</div></td>
+        <td><span class="badge b-blue">支持流式</span></td>
+        <td>~700M</td>
+        <td><span class="badge b-teal">中/英</span></td>
+        <td>~250ms</td>
+        <td>2025年新出，中文韵律极自然，支持零样本克隆</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section" id="s-vc">
+    <div class="rec">A5000 推荐：整体场景用 <strong>CosyVoice 2</strong>（流式+克隆一体），音色转换用 <strong>OpenVoice v2</strong>（延迟最低）</div>
+    <table>
+      <tr>
+        <th>模型</th><th>参考音长度</th><th>克隆方式</th><th>流式</th><th>语言</th><th>备注</th>
+      </tr>
+      <tr>
+        <td><div class="name">CosyVoice 2</div><div class="sub">阿里达摩院</div></td>
+        <td>3–10s</td>
+        <td><span class="badge b-green">零样本</span></td>
+        <td><span class="badge b-green">支持</span></td>
+        <td><span class="badge b-teal">中/英/日/韩</span></td>
+        <td>TTS+克隆一体，instruct 模式支持风格控制，推荐</td>
+      </tr>
+      <tr>
+        <td><div class="name">Fish Speech</div><div class="sub">Fish Audio</div></td>
+        <td>5–30s</td>
+        <td><span class="badge b-green">零样本</span></td>
+        <td><span class="badge b-green">支持</span></td>
+        <td><span class="badge b-teal">多语言</span></td>
+        <td>参考音越长效果越好，支持跨语言克隆</td>
+      </tr>
+      <tr>
+        <td><div class="name">F5-TTS</div><div class="sub">SWivid</div></td>
+        <td>3–15s</td>
+        <td><span class="badge b-green">零样本</span></td>
+        <td><span class="badge b-blue">部分</span></td>
+        <td><span class="badge b-teal">中/英</span></td>
+        <td>Flow Matching 速度快，相似度高，资源占用低</td>
+      </tr>
+      <tr>
+        <td><div class="name">OpenVoice v2</div><div class="sub">MyShell AI</div></td>
+        <td>5–30s</td>
+        <td><span class="badge b-amber">音色转换</span></td>
+        <td><span class="badge b-green">支持</span></td>
+        <td><span class="badge b-teal">多语言</span></td>
+        <td>先 TTS 再做音色迁移，延迟额外增加 &lt;50ms，灵活</td>
+      </tr>
+      <tr>
+        <td><div class="name">XTTS v2</div><div class="sub">Coqui AI</div></td>
+        <td>6s+</td>
+        <td><span class="badge b-green">零样本</span></td>
+        <td><span class="badge b-green">支持</span></td>
+        <td><span class="badge b-teal">17种语言</span></td>
+        <td>社区生态最完善，文档多，但中文效果弱于 CosyVoice</td>
+      </tr>
+      <tr>
+        <td><div class="name">Index-TTS</div><div class="sub">Bilibili</div></td>
+        <td>5–20s</td>
+        <td><span class="badge b-green">零样本</span></td>
+        <td><span class="badge b-blue">部分</span></td>
+        <td><span class="badge b-teal">中/英</span></td>
+        <td>2025 新模型，中文克隆相似度表现突出</td>
+      </tr>
+      <tr>
+        <td><div class="name">StyleTTS2</div><div class="sub">yl4579</div></td>
+        <td>参考音频</td>
+        <td><span class="badge b-amber">风格迁移</span></td>
+        <td><span class="badge b-blue">部分</span></td>
+        <td><span class="badge b-gray">英文为主</span></td>
+        <td>风格迁移而非硬克隆，韵律控制精细，英文效果优</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="note">
+    * 延迟数据为 A100/A5000 级 GPU 单次推理参考值，实际受输入长度、batch size、量化策略影响。<br>
+    * 所有模型均支持本地部署，无需外部 API。CosyVoice 2 / Fish Speech / FunASR 均有活跃社区和 Docker 镜像。
+  </div>
+</div>
+
+<script>
+function show(k) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('s-' + k).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>

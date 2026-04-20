@@ -1,0 +1,63 @@
+NovaCRM Pricing Plans
+
+Starter Plan — $29 per user per month (billed annually)
+- Up to 10,000 contacts
+- Basic contact management and deal pipeline
+- Email integration (Gmail, Outlook)
+- 5 email templates
+- Basic reporting (10 pre-built reports)
+- Community support forum
+- Mobile app access
+- 2 GB file storage per user
+
+Professional Plan — $79 per user per month (billed annually)
+- Up to 100,000 contacts
+- Everything in Starter, plus:
+- Email automation with sequences (up to 10 active sequences)
+- Phone system with call recording (500 minutes/user/month)
+- Chat widget (1 chatbot)
+- Custom reports and dashboards
+- Workflow automation (up to 20 workflows)
+- API access (10,000 calls/day)
+- Priority email support (24-hour response time)
+- 10 GB file storage per user
+- Custom fields and properties
+
+Business Plan — $149 per user per month (billed annually)
+- Up to 1,000,000 contacts
+- Everything in Professional, plus:
+- Advanced AI features (lead scoring, deal predictions, sentiment analysis)
+- Unlimited email sequences
+- Phone system with AI coaching (2,000 minutes/user/month)
+- Multiple chatbots with AI capabilities
+- Advanced workflow automation (unlimited workflows)
+- API access (100,000 calls/day)
+- Phone and email support (4-hour response time)
+- 50 GB file storage per user
+- Custom objects and relationships
+- Team hierarchies and territory management
+- SSO (SAML 2.0)
+
+Enterprise Plan — Custom Pricing
+- Unlimited contacts
+- Everything in Business, plus:
+- Dedicated account manager
+- Custom AI model training on your data
+- Unlimited phone minutes with premium voice quality
+- Advanced security (IP whitelisting, audit logs, data encryption at rest)
+- Custom SLA with 99.99% uptime guarantee
+- On-premise deployment option
+- Priority feature requests
+- Custom integrations development
+- Unlimited file storage
+- HIPAA compliance add-on available
+- Quarterly business reviews
+
+Add-ons (available on any plan):
+- Additional contacts: $10 per 10,000 contacts/month
+- Additional phone minutes: $0.03 per minute
+- Additional API calls: $5 per 10,000 calls/month
+- Data enrichment: $0.05 per contact enriched
+- Premium support: $500/month (1-hour response time, dedicated Slack channel)
+
+All plans include a 14-day free trial with full access to Business plan features. No credit card required for trial. Annual billing saves 20% compared to monthly billing. Volume discounts available for 50+ users.

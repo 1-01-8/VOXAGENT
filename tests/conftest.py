@@ -23,14 +23,23 @@ import pytest
 COMPONENT_MAP: dict[str, str] = {
     "test_session": "Dialogue — SessionContext 会话状态管理",
     "test_intent_router": "Dialogue — IntentRouter 三路意图路由",
+    "test_business_scope": "Dialogue — 业务问答模板",
     "test_emotion_detector": "Dialogue — EmotionDetector 情绪检测引擎",
     "test_memory_manager": "Dialogue — MemoryManager 多轮记忆管理",
     "test_transfer_policy": "Dialogue — TransferPolicy 转人工策略",
+    "test_domain_router": "Dialogue — DomainRouter 三域路由",
+    "test_task_state_machine": "Dialogue — TaskStateMachine 显式任务流",
+    "test_llm_tracing": "LLM — 调用轨迹记录",
     "test_base_tool": "Agent — BaseTool 工具抽象层",
     "test_tools": "Agent — Business Tools 业务工具集(7个)",
     "test_permission_guard": "Agent — PermissionGuard 四级权限拦截",
     "test_react_agent": "Agent — ReactAgent ReAct 推理循环",
+    "test_domain_agent": "Agent — DomainAgent 三领域工厂",
+    "test_function_calling_agent": "Agent — FunctionCallingAgent 原生函数调用",
+    "test_skill_registry": "Agent — SkillRegistry 正式技能注册表",
+    "test_mcp_server": "MCP — 业务互操作服务导出",
     "test_kb_manager": "Retrieval — KBManager 知识库热更新",
+    "test_hybrid_retriever": "Retrieval — HybridRetriever 混合检索",
     "test_session_logger": "Utils — SessionLogger 会话日志(JSONL)",
     "test_auto_qa": "Utils — AutoQA 自动质检引擎",
     "test_sensevoice_stt": "Voice — SenseVoice STT 语音识别",
@@ -88,7 +97,7 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
 from voice_optimized_rag.config import VORConfig
 from voice_optimized_rag.core.semantic_cache import SemanticCache
 from voice_optimized_rag.core.conversation_stream import ConversationStream
-from voice_optimized_rag.llm.base import LLMProvider
+from voice_optimized_rag.llm.base import LLMProvider, ToolCallingResponse
 from voice_optimized_rag.retrieval.embeddings import EmbeddingProvider
 from voice_optimized_rag.retrieval.vector_store import FAISSVectorStore
 from voice_optimized_rag.utils.metrics import MetricsCollector
@@ -109,8 +118,15 @@ class MockLLM(LLMProvider):
         self.call_count = 0
         self.last_prompt = ""
         self.last_context = ""
+        self.last_tools: list[dict] = []
+        self._supports_function_calling = False
         # 可预设多轮返回值（先入先出）
         self.response_queue: list[str] = []
+        self.tool_call_queue: list[ToolCallingResponse] = []
+
+    @property
+    def supports_function_calling(self) -> bool:
+        return self._supports_function_calling
 
     async def generate(self, prompt: str, context: str = "") -> str:
         self.call_count += 1
@@ -131,6 +147,24 @@ class MockLLM(LLMProvider):
         self.last_context = context
         for word in self._response.split():
             yield word + " "
+
+    async def complete_with_tools(
+        self,
+        prompt: str,
+        tools: list[dict],
+        context: str = "",
+        tool_choice: str = "auto",
+    ) -> ToolCallingResponse:
+        if not self._supports_function_calling:
+            raise NotImplementedError("MockLLM tool calling disabled")
+
+        self.call_count += 1
+        self.last_prompt = prompt
+        self.last_context = context
+        self.last_tools = tools
+        if self.tool_call_queue:
+            return self.tool_call_queue.pop(0)
+        return ToolCallingResponse(content=self._response)
 
 
 class MockEmbedding(EmbeddingProvider):

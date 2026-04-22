@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import pytest
 
+pytest.skip("本地 SenseVoice STT 部署已按要求停用，此测试文件整体跳过。", allow_module_level=True)
+
 from voice_optimized_rag.voice.sensevoice_stt import SenseVoiceSTT, SenseVoiceResult, EMOTION_MAP
 
 

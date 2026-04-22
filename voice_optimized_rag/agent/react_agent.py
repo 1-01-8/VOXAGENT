@@ -69,6 +69,8 @@ class ReactAgent:
         tools: list[BaseTool],
         permission_guard: PermissionGuard,
         stream: ConversationStream,
+        agent_name: str = "智能客服 Agent",
+        system_prompt_template: str = REACT_SYSTEM_PROMPT,
         max_iterations: int = 10,
         tool_timeout: float = 3.0,
         tool_retry: int = 1,
@@ -78,6 +80,8 @@ class ReactAgent:
         self._tools = {tool.name: tool for tool in tools}
         self._permission_guard = permission_guard
         self._stream = stream
+        self._agent_name = agent_name
+        self._system_prompt_template = system_prompt_template
         self._max_iterations = max_iterations
         self._tool_timeout = tool_timeout
         self._tool_retry = tool_retry
@@ -109,7 +113,7 @@ class ReactAgent:
             if tool.permission_level < 4  # Level 4 不展示给 Agent
         )
 
-        system = REACT_SYSTEM_PROMPT.format(tools=tools_desc)
+        system = self._build_system_prompt(tools_desc)
         scratchpad = f"用户请求: {user_request}\n"
         if memory_context:
             scratchpad += f"\n对话上下文:\n{memory_context}\n"
@@ -223,6 +227,13 @@ class ReactAgent:
                 )
 
         return ToolResult(success=False, error="unknown", message="重试次数耗尽")
+
+    def _build_system_prompt(self, tools_desc: str) -> str:
+        return (
+            self._system_prompt_template
+            .replace("{agent_name}", self._agent_name)
+            .replace("{tools}", tools_desc)
+        )
 
     async def _handle_max_failures(self, session: SessionContext) -> str:
         """连续失败达到上限，触发转人工"""

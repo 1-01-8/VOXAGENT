@@ -14,10 +14,11 @@ API Base: https://api.siliconflow.cn/v1
 
 from __future__ import annotations
 
+import json
 import os
 from typing import AsyncIterator
 
-from voice_optimized_rag.llm.base import LLMProvider
+from voice_optimized_rag.llm.base import LLMProvider, ToolCall, ToolCallingResponse
 from voice_optimized_rag.utils.logging import get_logger
 
 logger = get_logger("siliconflow_llm")
@@ -100,6 +101,10 @@ class SiliconFlowProvider(LLMProvider):
 
         logger.info(f"SiliconFlow provider initialized: model={self._model}")
 
+    @property
+    def supports_function_calling(self) -> bool:
+        return True
+
     async def generate(self, prompt: str, context: str = "") -> str:
         """同步生成完整回复"""
         response = await self._client.chat.completions.create(
@@ -125,3 +130,40 @@ class SiliconFlowProvider(LLMProvider):
             delta = chunk.choices[0].delta.content
             if delta:
                 yield delta
+
+    async def complete_with_tools(
+        self,
+        prompt: str,
+        tools: list[dict],
+        context: str = "",
+        tool_choice: str = "auto",
+    ) -> ToolCallingResponse:
+        response = await self._client.chat.completions.create(
+            model=self._model,
+            messages=self._build_messages(prompt, context),
+            temperature=self._temperature,
+            max_tokens=self._max_tokens,
+            tools=tools,
+            tool_choice=tool_choice,
+        )
+        choice = response.choices[0]
+        message = choice.message
+        tool_calls: list[ToolCall] = []
+
+        for tool_call in message.tool_calls or []:
+            raw_arguments = tool_call.function.arguments or "{}"
+            try:
+                arguments = json.loads(raw_arguments)
+            except json.JSONDecodeError:
+                arguments = {}
+            tool_calls.append(ToolCall(
+                name=tool_call.function.name,
+                arguments=arguments,
+                call_id=tool_call.id,
+            ))
+
+        return ToolCallingResponse(
+            content=message.content or "",
+            tool_calls=tool_calls,
+            finish_reason=choice.finish_reason or "",
+        )

@@ -19,7 +19,7 @@ import asyncio
 
 import pytest
 
-from voice_optimized_rag.agent.permission_guard import PermissionGuard
+from voice_optimized_rag.agent.permission_guard import PermissionGuard, TextPermissionGuard
 from voice_optimized_rag.core.conversation_stream import ConversationStream, EventType
 from voice_optimized_rag.dialogue.session import SessionContext, UserProfile
 from tests.conftest import MockTool
@@ -144,3 +144,14 @@ class TestPermissionGuard:
         # 其中一个应成功、一个应失败（不应都成功或都失败）
         results = {result_a.success, result_b.success}
         assert True in results and False in results
+
+    @pytest.mark.asyncio
+    async def test_text_permission_guard_inline_confirm(self, stream: ConversationStream, session: SessionContext):
+        prompts: list[str] = []
+        guard = TextPermissionGuard(stream, prompt_func=lambda prompt: prompts.append(prompt) or "yes")
+        tool = MockTool(permission_level=2)
+
+        result = await guard.check_permission(tool, session)
+
+        assert result.success is True
+        assert len(prompts) == 1

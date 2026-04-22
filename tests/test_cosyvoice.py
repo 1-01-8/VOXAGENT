@@ -18,6 +18,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+pytest.skip("本地 CosyVoice TTS 部署已按要求停用，此测试文件整体跳过。", allow_module_level=True)
+
 from voice_optimized_rag.voice.cosyvoice import CosyVoiceTTS
 
 

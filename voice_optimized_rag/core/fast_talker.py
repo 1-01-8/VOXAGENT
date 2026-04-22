@@ -14,6 +14,7 @@ Fast Talker（快速响应者）—— 前台低延迟响应 Agent
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from typing import AsyncIterator
 
 import numpy as np
@@ -24,9 +25,11 @@ from voice_optimized_rag.core.conversation_stream import (
     EventType,
     StreamEvent,
 )
+from voice_optimized_rag.dialogue.business_scope import build_business_answer_prompt
 from voice_optimized_rag.core.semantic_cache import SemanticCache
 from voice_optimized_rag.llm.base import LLMProvider
 from voice_optimized_rag.retrieval.embeddings import EmbeddingProvider
+from voice_optimized_rag.retrieval.hybrid_retriever import HybridRetriever, expand_query_text
 from voice_optimized_rag.retrieval.vector_store import FAISSVectorStore
 from voice_optimized_rag.utils.logging import get_logger
 from voice_optimized_rag.utils.metrics import MetricsCollector, Timer
@@ -58,14 +61,17 @@ class FastTalker:
         cache: SemanticCache,
         stream: ConversationStream,
         metrics: MetricsCollector,
+        retriever: HybridRetriever | None = None,
     ) -> None:
         self._config = config
         self._llm = llm
         self._embeddings = embedding_provider
         self._vector_store = vector_store
+        self._retriever = retriever or HybridRetriever(config, vector_store, metrics)
         self._cache = cache
         self._stream = stream
         self._metrics = metrics
+        self.last_trace: dict[str, object] = {}
 
     async def respond(self, query: str) -> str:
         """
@@ -79,7 +85,9 @@ class FastTalker:
         """
         with Timer(self._metrics, "fast_talker", "total_response") as timer:
             context = await self._get_context(query)   # 获取上下文（缓存或检索）
-            response = await self._llm.generate(query, context=context)
+            response = await self._llm.generate(build_business_answer_prompt(query), context=context)
+
+        self.last_trace["response_chars"] = len(response)
 
         logger.info(f"Response generated in {timer.elapsed_ms:.1f}ms (context: {len(context)} chars)")
         return response
@@ -100,7 +108,7 @@ class FastTalker:
         with Timer(self._metrics, "fast_talker", "total_response"):
             context = await self._get_context(query)
             first_token = True
-            async for chunk in self._llm.stream(query, context=context):
+            async for chunk in self._llm.stream(build_business_answer_prompt(query), context=context):
                 if first_token:
                     # 记录首 token 延迟（TTFT：Time To First Token）
                     # 这是语音对话中最关键的延迟指标
@@ -128,8 +136,17 @@ class FastTalker:
         因此用户任何语义相近的问法都能命中同一条缓存内容。
         """
         # ── Step 1: 向量化查询 ──
+        retrieval_query = expand_query_text(query)
+        self.last_trace = {
+            "query": query,
+            "retrieval_query": retrieval_query,
+            "path": "pending",
+            "cache_hit": False,
+            "sources": [],
+        }
+
         with Timer(self._metrics, "fast_talker", "embedding"):
-            query_embedding = await self._embeddings.embed_single(query)
+            query_embedding = await self._embeddings.embed_single(retrieval_query)
 
         # ── Step 2: 尝试语义缓存（快路径）──
         with Timer(self._metrics, "fast_talker", "cache_lookup") as cache_timer:
@@ -142,6 +159,12 @@ class FastTalker:
             # 缓存命中 → 直接格式化上下文返回，无需访问向量数据库
             logger.debug(f"Cache HIT: {len(cached)} chunks in {cache_timer.elapsed_ms:.2f}ms")
             context_chunks = [entry.text for entry in cached]
+            self.last_trace.update(
+                path="cache",
+                cache_hit=True,
+                result_count=len(cached),
+                sources=self._extract_sources(entry.metadata for entry in cached),
+            )
             return self._format_context(context_chunks)
 
         # ── Step 3: 缓存未命中 → 降级到 FAISS 直接检索（慢路径）──
@@ -149,13 +172,21 @@ class FastTalker:
 
         if self._config.fast_talker_fallback_to_retrieval:
             with Timer(self._metrics, "fast_talker", "fallback_retrieval"):
-                results = self._vector_store.search(
-                    query_embedding,
+                results = self._retriever.search(
+                    query_text=retrieval_query,
+                    query_embedding=query_embedding,
                     top_k=self._config.fast_talker_max_context_chunks,
                     include_embeddings=True,
                 )
                 if results:
                     context_chunks = [r.text for r in results]
+                    self.last_trace.update(
+                        path="retrieval",
+                        cache_hit=False,
+                        result_count=len(results),
+                        sources=self._extract_sources(r.metadata for r in results),
+                        retrieval_sources=[r.retrieval_source for r in results[:3]],
+                    )
 
                     # 将检索结果写入缓存（以文档向量为键），热身缓存
                     # 下一个相似问题就能命中缓存，不再走慢路径
@@ -181,6 +212,7 @@ class FastTalker:
             event_type=EventType.PRIORITY_RETRIEVAL,
             text=query,
         ))
+        self.last_trace.update(path="empty", cache_hit=False, result_count=0, sources=[])
         return ""  # 空上下文，LLM 依靠自身训练知识回答（可能不准确）
 
     def _format_context(self, chunks: list[str]) -> str:
@@ -200,3 +232,15 @@ class FastTalker:
         for i, chunk in enumerate(chunks, 1):
             formatted.append(f"[{i}] {chunk}")
         return "\n\n".join(formatted)
+
+    @staticmethod
+    def _extract_sources(metadata_items) -> list[str]:
+        sources: list[str] = []
+        for metadata in metadata_items:
+            source = metadata.get("source") or metadata.get("path") or metadata.get("file_name")
+            if not source:
+                continue
+            name = Path(str(source)).name
+            if name not in sources:
+                sources.append(name)
+        return sources[:5]

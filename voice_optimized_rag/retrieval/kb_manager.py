@@ -202,18 +202,20 @@ class KBManager:
         kept_texts = [self._vector_store._texts[i] for i in keep_indices]
         kept_metadata = [self._vector_store._metadata[i] for i in keep_indices]
 
-        # 从旧索引中提取保留文档的向量
-        kept_embeddings = np.stack([
-            self._vector_store._index.reconstruct(i) for i in keep_indices
-        ]).astype(np.float32)
-
         # 重建索引
         new_index = faiss.IndexFlatIP(self._vector_store._dimension)
-        new_index.add(kept_embeddings)
+        if keep_indices:
+            # 从旧索引中提取保留文档的向量
+            kept_embeddings = np.stack([
+                self._vector_store._index.reconstruct(i) for i in keep_indices
+            ]).astype(np.float32)
+            new_index.add(kept_embeddings)
 
         self._vector_store._index = new_index
         self._vector_store._texts = kept_texts
         self._vector_store._metadata = kept_metadata
+        if hasattr(self._vector_store, "bump_version"):
+            self._vector_store.bump_version()
 
     def get_stats(self) -> dict:
         """获取知识库统计信息"""

@@ -62,6 +62,7 @@ class QdrantVectorStore:
 
         self._dimension = dimension
         self._collection = collection_name   # 保存集合名，后续所有操作都需要指定
+        self._document_version = 0
 
         # ── 连接 Qdrant 服务 ──
         kwargs: dict = {"url": url, "timeout": 30}  # timeout=30s，云端网络可能较慢
@@ -91,6 +92,10 @@ class QdrantVectorStore:
         """返回集合中当前存储的向量点总数"""
         info = self._client.get_collection(self._collection)
         return info.points_count or 0  # points_count 可能为 None，兜底返回 0
+
+    @property
+    def document_version(self) -> int:
+        return self._document_version
 
     def add_documents(
         self,
@@ -141,6 +146,7 @@ class QdrantVectorStore:
                 # 支持文档更新场景（重新导入同 ID 文档时不会重复）
             )
 
+        self.bump_version()
         logger.info(f"Added {len(texts)} documents to Qdrant (total: {self.size})")
 
     def search(
@@ -198,9 +204,46 @@ class QdrantVectorStore:
                 index=hash(point.id) % (2**31),          # 将 UUID 字符串哈希为整数索引
                                                          # （FAISSVectorStore 用整数索引，保持接口兼容）
                 embedding=emb,
+                dense_score=point.score,
+                retrieval_source="dense",
             ))
 
         return search_results
+
+    def list_documents(self) -> list[SearchResult]:
+        """Scroll all documents for sparse indexing and fusion sync."""
+        documents: list[SearchResult] = []
+        offset = None
+        index = 0
+
+        while True:
+            points, next_offset = self._client.scroll(
+                collection_name=self._collection,
+                offset=offset,
+                limit=256,
+                with_payload=True,
+                with_vectors=False,
+            )
+            for point in points:
+                text = point.payload.get("text", "") if point.payload else ""
+                meta = {k: v for k, v in (point.payload or {}).items() if k != "text"}
+                documents.append(SearchResult(
+                    text=text,
+                    metadata=meta,
+                    score=0.0,
+                    index=index,
+                    retrieval_source="sparse",
+                ))
+                index += 1
+
+            if next_offset is None:
+                break
+            offset = next_offset
+
+        return documents
+
+    def bump_version(self) -> None:
+        self._document_version += 1
 
     def delete_collection(self) -> None:
         """
@@ -209,4 +252,5 @@ class QdrantVectorStore:
         用于测试清理或重置知识库，操作不可逆，谨慎调用。
         """
         self._client.delete_collection(self._collection)
+        self.bump_version()
         logger.info(f"Deleted Qdrant collection: {self._collection}")

@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 
@@ -93,4 +93,54 @@ class BaseTool(ABC):
             f"- {self.name}: {self.description} "
             f"[权限: Level {self.permission_level} {level_desc.get(self.permission_level, '')}]"
             f"{params}"
+        )
+
+    def to_json_schema(self) -> dict[str, Any]:
+        """导出 OpenAI-compatible 的 JSON Schema。"""
+        properties: dict[str, dict[str, Any]] = {}
+        required: list[str] = []
+
+        for parameter in self.parameters:
+            schema: dict[str, Any] = {"type": parameter.type}
+            if parameter.description:
+                schema["description"] = parameter.description
+            properties[parameter.name] = schema
+            if parameter.required:
+                required.append(parameter.name)
+
+        result: dict[str, Any] = {
+            "type": "object",
+            "properties": properties,
+            "additionalProperties": False,
+        }
+        if required:
+            result["required"] = required
+        return result
+
+    def to_function_schema(self) -> dict[str, Any]:
+        """导出工具定义，供原生 function calling 使用。"""
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": self.to_json_schema(),
+            },
+        }
+
+    def validate_arguments(self, arguments: dict[str, Any]) -> ToolResult | None:
+        """Validate required arguments before permission checks or execution."""
+        missing = [
+            parameter.name
+            for parameter in self.parameters
+            if parameter.required and not arguments.get(parameter.name)
+        ]
+        if not missing:
+            return None
+
+        missing_text = "、".join(missing)
+        return ToolResult(
+            success=False,
+            error="missing_params",
+            message=f"请提供以下必要信息：{missing_text}。",
         )

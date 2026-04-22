@@ -78,12 +78,13 @@ def create_tts(provider: str, **kwargs) -> TTSProvider:
             voice=kwargs.get("voice", "alloy"),
         )
     elif provider == "cosyvoice":
-        from voice_optimized_rag.voice.cosyvoice import CosyVoiceTTS
-        return CosyVoiceTTS(
-            model_id=kwargs.get("model_id", "iic/CosyVoice2-0.5B"),
-            device=kwargs.get("device", "cuda:0"),
-            default_speaker=kwargs.get("default_speaker", "中文女"),
-        )
+        # from voice_optimized_rag.voice.cosyvoice import CosyVoiceTTS
+        # return CosyVoiceTTS(
+        #     model_id=kwargs.get("model_id", "iic/CosyVoice2-0.5B"),
+        #     device=kwargs.get("device", "cuda:0"),
+        #     default_speaker=kwargs.get("default_speaker", "中文女"),
+        # )
+        raise RuntimeError("create_tts('cosyvoice') 已停用，本地 TTS 部署已被注释关闭。")
     elif provider == "siliconflow":
         from voice_optimized_rag.voice.siliconflow_tts import SiliconFlowTTS
         return SiliconFlowTTS(

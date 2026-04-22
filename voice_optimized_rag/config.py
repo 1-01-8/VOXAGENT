@@ -30,6 +30,14 @@ class VORConfig(BaseSettings):
     vector_store_provider: Literal["faiss", "qdrant"] = "faiss"
     faiss_index_path: Path = Path("data/faiss_index")
     retrieval_latency_ms: float = 0  # Simulated retrieval latency for benchmarking
+    retrieval_mode: Literal["dense", "hybrid"] = "hybrid"
+    hybrid_dense_top_k: int = 12
+    hybrid_sparse_top_k: int = 12
+    hybrid_candidate_pool: int = 20
+    hybrid_rrf_k: int = 60
+    sparse_bm25_k1: float = 1.5
+    sparse_bm25_b: float = 0.75
+    rerank_enabled: bool = True
 
     # Qdrant settings (when vector_store_provider="qdrant")
     qdrant_url: str = "http://localhost:6333"
@@ -59,17 +67,18 @@ class VORConfig(BaseSettings):
     chunk_overlap: int = 50
 
     # Voice settings
-    stt_provider: Literal["whisper", "deepgram", "openai", "sensevoice", "siliconflow", "none", ""] = "sensevoice"
-    tts_provider: Literal["openai", "elevenlabs", "edge", "cosyvoice", "siliconflow", "none", ""] = "cosyvoice"
+    # 本地 ASR/TTS 部署路径已停用；默认改为云端 provider。
+    stt_provider: Literal["whisper", "deepgram", "openai", "sensevoice", "siliconflow", "none", ""] = "siliconflow"
+    tts_provider: Literal["openai", "elevenlabs", "edge", "cosyvoice", "siliconflow", "none", ""] = "siliconflow"
     whisper_model: str = "base.en"
     sample_rate: int = 16000
     vad_aggressiveness: int = 2
 
-    # SenseVoice settings (STT + emotion)
+    # SenseVoice settings (STT + emotion) -- 本地部署已停用，字段仅保留兼容历史配置
     sensevoice_model: str = "iic/SenseVoiceSmall"
     sensevoice_device: str = "cuda:0"
 
-    # CosyVoice settings (TTS + clone)
+    # CosyVoice settings (TTS + clone) -- 本地部署已停用，字段仅保留兼容历史配置
     cosyvoice_model: str = "iic/CosyVoice2-0.5B"
     cosyvoice_device: str = "cuda:0"
     cosyvoice_default_speaker: str = "中文女"

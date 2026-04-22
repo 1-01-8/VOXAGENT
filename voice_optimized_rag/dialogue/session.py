@@ -36,11 +36,36 @@ class TaskStatus(str, Enum):
     FAILED = "failed"
 
 
+class TaskWorkflow(str, Enum):
+    """显式任务工作流类型。"""
+    NONE = "none"
+    REFUND = "refund"
+    CANCEL_ORDER = "cancel_order"
+    UPDATE_ADDRESS = "update_address"
+
+
+class TaskStage(str, Enum):
+    """显式任务状态机阶段。"""
+    IDLE = "idle"
+    COLLECTING = "collecting"
+    CONFIRMING = "confirming"
+    EXECUTING = "executing"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+
+
 class IntentType(str, Enum):
-    """意图类型（三路路由）"""
+    """意图类型（纯业务三态：知识 / 任务 / 超范围）"""
     KNOWLEDGE = "knowledge"      # 知识咨询型 → RAG
     TASK = "task"                # 任务执行型 → Agent
-    CHITCHAT = "chitchat"        # 闲聊情绪型 → LLM 直答
+    OUT_OF_SCOPE = "out_of_scope"  # 非业务请求 → 拒答并引导
+
+
+class AgentDomain(str, Enum):
+    """业务域类型（三领域 Agent 路由）"""
+    SALES = "sales"
+    AFTER_SALES = "after_sales"
+    FINANCE = "finance"
 
 
 @dataclass
@@ -77,6 +102,7 @@ class SessionContext:
 
     # 意图与槽位
     current_intent: IntentType = IntentType.KNOWLEDGE
+    current_domain: AgentDomain = AgentDomain.SALES
     slots: dict[str, SlotInfo] = field(default_factory=dict)
 
     # 情绪追踪（历史限制最近 50 轮，避免长会话内存泄漏）
@@ -88,6 +114,8 @@ class SessionContext:
     # 任务状态
     task_status: TaskStatus = TaskStatus.IDLE
     task_description: str = ""
+    active_workflow: TaskWorkflow = TaskWorkflow.NONE
+    workflow_stage: TaskStage = TaskStage.IDLE
 
     # 对话统计
     turn_count: int = 0
@@ -137,8 +165,11 @@ class SessionContext:
             "session_id": self.session_id,
             "turn_count": self.turn_count,
             "intent": self.current_intent.value,
+            "domain": self.current_domain.value,
             "emotion": self.emotion.value,
             "task_status": self.task_status.value,
+            "active_workflow": self.active_workflow.value,
+            "workflow_stage": self.workflow_stage.value,
             "consecutive_angry": self.consecutive_angry_turns,
             "agent_failures": self.agent_failure_count,
             "transfer_requested": self.transfer_requested,

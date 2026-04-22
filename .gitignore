@@ -13,3 +13,27 @@ htmlcov/
 # OS junk
 .DS_Store
 Thumbs.db
+
+# Secrets
+.env
+.env.local
+*.key
+*.pem
+
+# Editor / IDE
+.vscode/
+.idea/
+
+# Runtime data & logs
+logs/
+data/faiss_index/
+data/qdrant/
+data/chroma/
+
+# Local knowledge base content (user-specific)
+knowledge_base/real_world/
+
+# Virtual envs
+.venv/
+venv/
+env/

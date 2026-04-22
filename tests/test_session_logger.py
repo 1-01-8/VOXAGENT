@@ -53,7 +53,7 @@ class TestSessionLogger:
             user_text="你好",
             agent_text="您好",
             emotion="neutral",
-            intent="chitchat",
+            intent="out_of_scope",
         )
 
         files = list(logger_dir.glob("*.jsonl"))

@@ -104,10 +104,10 @@ class TestEnums:
         assert EmotionState.CONFUSED.value == "confused"
 
     def test_intent_values(self):
-        """IntentType 应包含三路路由类型"""
+        """IntentType 应包含纯业务三态"""
         assert IntentType.KNOWLEDGE.value == "knowledge"
         assert IntentType.TASK.value == "task"
-        assert IntentType.CHITCHAT.value == "chitchat"
+        assert IntentType.OUT_OF_SCOPE.value == "out_of_scope"
 
     def test_task_status_values(self):
         """TaskStatus 应包含完整的状态流转值"""

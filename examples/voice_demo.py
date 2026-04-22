@@ -10,8 +10,8 @@ This demo creates a complete voice conversation loop:
 Usage:
     VOR_LLM_API_KEY=sk-... python examples/voice_demo.py --docs path/to/docs/
 
-    # With Ollama (local, no API key):
-    python examples/voice_demo.py --provider ollama --docs path/to/docs/
+    # 本地 ASR/TTS 已停用，语音模式请改用云端 STT/TTS:
+    VOR_SILICONFLOW_API_KEY=sk-... python examples/voice_demo.py --stt siliconflow --tts siliconflow
 """
 
 from __future__ import annotations
@@ -36,9 +36,8 @@ async def main() -> None:
     parser.add_argument("--provider", default="openai", choices=["openai", "anthropic", "ollama", "gemini"])
     parser.add_argument("--model", default=None)
     parser.add_argument("--api-key", default=None)
-    parser.add_argument("--stt", default="whisper", choices=["whisper", "openai"])
-    parser.add_argument("--tts", default="edge", choices=["edge", "openai"])
-    parser.add_argument("--whisper-model", default="base.en")
+    parser.add_argument("--stt", default="siliconflow", choices=["siliconflow", "openai"])
+    parser.add_argument("--tts", default="siliconflow", choices=["siliconflow", "edge", "openai"])
     parser.add_argument("--log-level", default="WARNING")
     args = parser.parse_args()
 
@@ -62,14 +61,28 @@ async def main() -> None:
     router = MemoryRouter(config)
     audio = AudioStream(sample_rate=config.sample_rate, vad_aggressiveness=config.vad_aggressiveness)
 
-    stt_kwargs = {"model_size": args.whisper_model}
-    if args.stt == "openai":
-        stt_kwargs = {"api_key": config.llm_api_key}
+    stt_kwargs = {"api_key": config.llm_api_key}
+    if args.stt == "siliconflow":
+        stt_kwargs = {
+            "api_key": config.siliconflow_api_key or config.llm_api_key,
+            "sf_stt_model": config.siliconflow_stt_model,
+            "sf_base_url": config.siliconflow_base_url,
+        }
     stt = create_stt(args.stt, **stt_kwargs)
 
     tts_kwargs = {}
     if args.tts == "openai":
         tts_kwargs = {"api_key": config.llm_api_key}
+    elif args.tts == "siliconflow":
+        tts_kwargs = {
+            "api_key": config.siliconflow_api_key or config.llm_api_key,
+            "sf_tts_model": config.siliconflow_tts_model,
+            "sf_tts_voice": config.siliconflow_tts_voice,
+            "sf_base_url": config.siliconflow_base_url,
+            "sf_tts_sample_rate": config.siliconflow_tts_sample_rate,
+            "sf_tts_format": config.siliconflow_tts_format,
+            "sf_tts_speed": config.siliconflow_tts_speed,
+        }
     tts = create_tts(args.tts, **tts_kwargs)
 
     print("=" * 60)

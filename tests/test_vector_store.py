@@ -84,3 +84,16 @@ def test_mismatched_length_raises(vector_store: FAISSVectorStore, dim: int):
 
     with pytest.raises(ValueError, match="same length"):
         vector_store.add_documents(texts, embeddings)
+
+
+def test_duplicate_source_chunk_is_skipped(vector_store: FAISSVectorStore, dim: int):
+    texts = ["Pricing A", "Pricing A"]
+    embeddings = _make_embeddings(2, dim, seed=7)
+    metadata = [
+        {"source": "pricing.txt", "chunk_index": 0},
+        {"source": "pricing.txt", "chunk_index": 0},
+    ]
+
+    vector_store.add_documents(texts, embeddings, metadata)
+
+    assert vector_store.size == 1

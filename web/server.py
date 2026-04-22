@@ -1,6 +1,6 @@
 """实时语音客服 WebSocket 服务端
 
-架构：Browser Mic → WebSocket(PCM) → SenseVoice STT → Agent Pipeline → CosyVoice TTS → WebSocket(PCM) → Browser Speaker
+架构：Browser Mic → WebSocket(PCM) → Cloud STT → Agent Pipeline → Cloud TTS → WebSocket(PCM) → Browser Speaker
 
 在语音模型未部署时自动降级为 "文字模拟模式"：
 - STT 由前端文字输入替代
@@ -17,6 +17,7 @@ import time
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import AsyncIterator
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, FileResponse
@@ -25,16 +26,17 @@ from fastapi.staticfiles import StaticFiles
 # ─── 项目内部导入 ───
 from voice_optimized_rag.config import VORConfig
 from voice_optimized_rag.core.conversation_stream import ConversationStream, EventType, StreamEvent
+from voice_optimized_rag.dialogue.business_scope import OUT_OF_SCOPE_RESPONSE, build_business_answer_prompt
+from voice_optimized_rag.dialogue.domain_router import DomainRouter
 from voice_optimized_rag.dialogue.session import SessionContext, EmotionState, IntentType
 from voice_optimized_rag.dialogue.intent_router import IntentRouter
 from voice_optimized_rag.dialogue.emotion_detector import EmotionDetector
 from voice_optimized_rag.dialogue.memory_manager import MemoryManager
+from voice_optimized_rag.dialogue.task_state_machine import BusinessTaskStateMachine
 from voice_optimized_rag.dialogue.transfer_policy import TransferPolicy
-from voice_optimized_rag.agent.react_agent import ReactAgent
+from voice_optimized_rag.agent.domain_agent import create_domain_agents
 from voice_optimized_rag.agent.permission_guard import PermissionGuard
-from voice_optimized_rag.agent.tools.query_tools import QueryOrderTool, QueryInventoryTool, GetCustomerInfoTool, CheckPromotionTool
-from voice_optimized_rag.agent.tools.write_tools import UpdateAddressTool, CancelOrderTool
-from voice_optimized_rag.agent.tools.finance_tools import ApplyRefundTool
+from voice_optimized_rag.llm.base import LLMProvider
 from voice_optimized_rag.utils.auto_qa import AutoQA
 from voice_optimized_rag.utils.session_logger import SessionLogger
 
@@ -63,9 +65,6 @@ def _try_load_voice(config: VORConfig):
             from voice_optimized_rag.voice.stt import create_stt
             stt = create_stt(
                 config.stt_provider,
-                model_id=config.sensevoice_model,
-                device=config.sensevoice_device,
-                model_size=config.whisper_model,
                 api_key=(
                     config.siliconflow_api_key
                     if config.stt_provider == "siliconflow"
@@ -83,9 +82,6 @@ def _try_load_voice(config: VORConfig):
             from voice_optimized_rag.voice.tts import create_tts
             tts = create_tts(
                 config.tts_provider,
-                model_id=config.cosyvoice_model,
-                device=config.cosyvoice_device,
-                default_speaker=config.cosyvoice_default_speaker,
                 api_key=(
                     config.siliconflow_api_key
                     if config.tts_provider == "siliconflow"
@@ -101,8 +97,9 @@ def _try_load_voice(config: VORConfig):
             logger.info(f"TTS loaded: {config.tts_provider}")
             # 启动时预热：触发模型加载 + JIT 编译 + 音色缓存（首条请求不再等 30s）
             try:
-                if hasattr(tts, "_ensure_model"):
-                    tts._ensure_model()
+                ensure_model = getattr(tts, "_ensure_model", None)
+                if callable(ensure_model):
+                    ensure_model()
             except Exception as e:
                 logger.warning(f"TTS 预热失败: {e}")
         except Exception as e:
@@ -111,16 +108,21 @@ def _try_load_voice(config: VORConfig):
     return stt, tts
 
 
-class _EchoLLM:
+class _EchoLLM(LLMProvider):
     """无 API Key 时的降级 LLM，回显用户输入 + 提示。"""
     async def generate(self, prompt: str, context: str = "") -> str:
-        if "task" in prompt.lower() or "knowledge" in prompt.lower() or "chitchat" in prompt.lower():
-            return "knowledge"
+        prompt_lower = prompt.lower()
+        if "task" in prompt_lower or "knowledge" in prompt_lower or "out_of_scope" in prompt_lower:
+            if any(keyword in prompt for keyword in ("退款", "订单", "地址", "取消")):
+                return "task"
+            if any(keyword in prompt for keyword in ("价格", "报价", "套餐", "发票", "功能")):
+                return "knowledge"
+            return "out_of_scope"
         if "压缩" in prompt or "摘要" in prompt:
             return "（摘要占位）"
-        return f"[Echo] 收到您的消息。当前为演示模式，请配置 VOR_LLM_API_KEY 以启用真实对话。"
+        return f"[Echo] 收到您的业务请求。当前为演示模式，请配置 VOR_LLM_API_KEY 以启用真实对话。"
 
-    async def stream(self, prompt: str, context: str = ""):
+    async def stream(self, prompt: str, context: str = "") -> AsyncIterator[str]:
         resp = await self.generate(prompt, context)
         for word in resp.split():
             yield word + " "
@@ -135,6 +137,7 @@ async def lifespan(app: FastAPI):
 
     stream = ConversationStream(window_size=config.conversation_window_size)
     intent_router = IntentRouter(llm)
+    domain_router = DomainRouter(llm)
     emotion_detector = EmotionDetector(stream)
     memory_manager = MemoryManager(llm, short_term_turns=config.memory_short_term_turns)
     transfer_policy = TransferPolicy(
@@ -143,25 +146,25 @@ async def lifespan(app: FastAPI):
         max_agent_failures=config.transfer_max_failures,
     )
     guard = PermissionGuard(stream, confirm_timeout=15.0)
-    tools = [
-        QueryOrderTool(), QueryInventoryTool(), GetCustomerInfoTool(),
-        CheckPromotionTool(), UpdateAddressTool(), CancelOrderTool(),
-        ApplyRefundTool(),
-    ]
-    agent = ReactAgent(
-        llm=llm, tools=tools, permission_guard=guard, stream=stream,
+    domain_agents = create_domain_agents(
+        llm=llm,
+        permission_guard=guard,
+        stream=stream,
         max_iterations=config.agent_max_iterations,
         tool_timeout=config.agent_tool_timeout,
         tool_retry=config.agent_tool_retry,
     )
+    task_state_machine = BusinessTaskStateMachine(guard)
     auto_qa = AutoQA()
     session_logger = SessionLogger(config.session_log_dir)
 
     _components.update(
         config=config, llm=llm, stt=stt, tts=tts, stream=stream,
-        intent_router=intent_router, emotion_detector=emotion_detector,
+        intent_router=intent_router, domain_router=domain_router,
+        emotion_detector=emotion_detector,
         memory_manager=memory_manager, transfer_policy=transfer_policy,
-        agent=agent, auto_qa=auto_qa, session_logger=session_logger,
+        domain_agents=domain_agents, task_state_machine=task_state_machine,
+        auto_qa=auto_qa, session_logger=session_logger,
         guard=guard,
     )
 
@@ -267,7 +270,16 @@ async def websocket_chat(ws: WebSocket):
 
             # ── 3. 意图路由 ──
             intent_router = _components["intent_router"]
-            intent = await intent_router.classify(user_text, session)
+            intent = await intent_router.classify(user_text, session, per_session_memory.get_context())
+            session.current_intent = intent
+            if intent != IntentType.OUT_OF_SCOPE:
+                domain_router = _components["domain_router"]
+                await domain_router.classify(
+                    user_text,
+                    session,
+                    intent=intent,
+                    conversation_text=per_session_memory.get_context(),
+                )
 
             # ── 4. 转人工检查 ──
             transfer_policy = _components["transfer_policy"]
@@ -292,7 +304,7 @@ async def websocket_chat(ws: WebSocket):
             await per_session_memory.add_turn("user", user_text, session)
 
             # ── 6. 生成回复（LLM→TTS 全流水线）──
-            agent = _components["agent"]
+            domain_agents = _components["domain_agents"]
             tts = _components.get("tts")
             llm = _components["llm"]
 
@@ -423,18 +435,29 @@ async def websocket_chat(ws: WebSocket):
             t_gen0 = time.perf_counter()
             if intent == IntentType.TASK:
                 await ws.send_json({"type": "status", "message": "正在处理您的请求..."})
-                # Agent 执行不支持流式 token，退回非流式
-                reply_text = await agent.execute(user_text, session)
+                task_result = await _components["task_state_machine"].handle(user_text, session)
+                if task_result.handled:
+                    reply_text = task_result.reply_text
+                else:
+                    reply_text = await domain_agents[session.current_domain].execute(
+                        user_text,
+                        session,
+                        per_session_memory.get_context(),
+                    )
                 reply_parts.append(reply_text)
                 if tts:
                     await tts_queue.put(reply_text)
             elif intent == IntentType.KNOWLEDGE:
                 context = per_session_memory.get_context()
                 await _produce_from_stream(
-                    f"基于上下文回答用户问题：\n用户：{user_text}", context=context,
+                    build_business_answer_prompt(user_text),
+                    context=context,
                 )
             else:
-                await _produce_from_stream(f"友好地回复用户的闲聊：{user_text}")
+                reply_text = OUT_OF_SCOPE_RESPONSE
+                reply_parts.append(reply_text)
+                if tts:
+                    await tts_queue.put(reply_text)
 
             # 关 TTS 队列，等消费者清空
             if tts:
@@ -620,7 +643,16 @@ async def _process_pipeline(
 
     # 意图
     intent_router = _components["intent_router"]
-    intent = await intent_router.classify(user_text, session)
+    intent = await intent_router.classify(user_text, session, memory.get_context())
+    session.current_intent = intent
+    if intent != IntentType.OUT_OF_SCOPE:
+        domain_router = _components["domain_router"]
+        await domain_router.classify(
+            user_text,
+            session,
+            intent=intent,
+            conversation_text=memory.get_context(),
+        )
 
     # 转人工
     transfer_policy = _components["transfer_policy"]
@@ -632,19 +664,26 @@ async def _process_pipeline(
     await memory.add_turn("user", user_text, session)
 
     # 生成回复
-    agent = _components["agent"]
-    from voice_optimized_rag.dialogue.session import IntentType
+    domain_agents = _components["domain_agents"]
     if intent == IntentType.TASK:
-        reply_text = await agent.execute(user_text, session)
+        task_result = await _components["task_state_machine"].handle(user_text, session)
+        if task_result.handled:
+            reply_text = task_result.reply_text
+        else:
+            reply_text = await domain_agents[session.current_domain].execute(
+                user_text,
+                session,
+                memory.get_context(),
+            )
     elif intent == IntentType.KNOWLEDGE:
         context = memory.get_context()
         llm = _components["llm"]
         reply_text = await llm.generate(
-            f"基于上下文回答用户问题：\n用户：{user_text}", context=context
+            build_business_answer_prompt(user_text),
+            context=context,
         )
     else:
-        llm = _components["llm"]
-        reply_text = await llm.generate(f"友好地回复用户的闲聊：{user_text}")
+        reply_text = OUT_OF_SCOPE_RESPONSE
 
     # 质检
     auto_qa = _components["auto_qa"]

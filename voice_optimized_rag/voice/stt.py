@@ -27,36 +27,17 @@ class STTProvider(ABC):
 
 
 class WhisperSTT(STTProvider):
-    """Local STT using faster-whisper (no API needed)."""
+    """本地 Whisper STT 已按要求停用。"""
 
     def __init__(self, model_size: str = "base.en") -> None:
-        try:
-            from faster_whisper import WhisperModel
-        except ImportError:
-            raise ImportError("Install faster-whisper: pip install voice-optimized-rag[voice]")
-        self._model = WhisperModel(model_size, compute_type="int8")
-        logger.info(f"Loaded Whisper model: {model_size}")
-
-    async def transcribe(self, audio_data: bytes, sample_rate: int = 16000) -> str:
-        import asyncio
-        import io
-        import numpy as np
-
-        # Convert bytes to float32 numpy array
-        audio_np = np.frombuffer(audio_data, dtype=np.int16).astype(np.float32) / 32768.0
-
-        # Run in executor to avoid blocking the event loop
-        loop = asyncio.get_event_loop()
-        segments, _ = await loop.run_in_executor(
-            None,
-            lambda: self._model.transcribe(audio_np, language="en"),
+        raise RuntimeError(
+            "Whisper 本地 STT 部署已被注释停用，请改用 provider='openai' 或 provider='siliconflow'。"
         )
 
-        # Collect all segments
-        text_parts = []
-        for segment in segments:
-            text_parts.append(segment.text.strip())
-        return " ".join(text_parts)
+    async def transcribe(self, audio_data: bytes, sample_rate: int = 16000) -> str:
+        raise RuntimeError(
+            "Whisper 本地 STT 部署已被注释停用，请改用 provider='openai' 或 provider='siliconflow'。"
+        )
 
 
 class OpenAISTT(STTProvider):
@@ -93,15 +74,17 @@ class OpenAISTT(STTProvider):
 def create_stt(provider: str, **kwargs) -> STTProvider:
     """Factory function to create an STT provider."""
     if provider == "whisper":
-        return WhisperSTT(model_size=kwargs.get("model_size", "base.en"))
+        # return WhisperSTT(model_size=kwargs.get("model_size", "base.en"))
+        raise RuntimeError("create_stt('whisper') 已停用，本地 ASR 部署已被注释关闭。")
     elif provider == "openai":
         return OpenAISTT(api_key=kwargs["api_key"])
     elif provider == "sensevoice":
-        from voice_optimized_rag.voice.sensevoice_stt import SenseVoiceSTT
-        return SenseVoiceSTT(
-            model_id=kwargs.get("model_id", "iic/SenseVoiceSmall"),
-            device=kwargs.get("device", "cuda:0"),
-        )
+        # from voice_optimized_rag.voice.sensevoice_stt import SenseVoiceSTT
+        # return SenseVoiceSTT(
+        #     model_id=kwargs.get("model_id", "iic/SenseVoiceSmall"),
+        #     device=kwargs.get("device", "cuda:0"),
+        # )
+        raise RuntimeError("create_stt('sensevoice') 已停用，本地 ASR 部署已被注释关闭。")
     elif provider == "siliconflow":
         from voice_optimized_rag.voice.siliconflow_stt import SiliconFlowSTT
         return SiliconFlowSTT(

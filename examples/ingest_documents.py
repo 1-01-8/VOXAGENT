@@ -33,7 +33,7 @@ async def main() -> None:
     parser.add_argument("--extensions", nargs="+", default=None, help="File extensions (e.g., .txt .md)")
     args = parser.parse_args()
 
-    directory = args.input_dir or directory
+    directory = args.input_dir or args.directory
     if directory is None:
         parser.error("directory is required (provide as positional argument or via --input-dir)")
 

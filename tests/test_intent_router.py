@@ -2,7 +2,7 @@
 
 系统组件: Dialogue — IntentRouter 三路意图路由
 源文件:   voice_optimized_rag/dialogue/intent_router.py
-职责:     将用户输入分类为 task / knowledge / chitchat，触发转人工
+职责:     将用户输入分类为 task / knowledge / out_of_scope，触发转人工
 
 测试覆盖：
 - 任务型关键词快速匹配
@@ -17,7 +17,7 @@ from __future__ import annotations
 import pytest
 
 from voice_optimized_rag.dialogue.intent_router import IntentRouter
-from voice_optimized_rag.dialogue.session import IntentType, SessionContext
+from voice_optimized_rag.dialogue.session import IntentType, SessionContext, TaskWorkflow
 
 
 @pytest.fixture
@@ -41,10 +41,16 @@ class TestIntentRouter:
         assert intent == IntentType.KNOWLEDGE
 
     @pytest.mark.asyncio
+    async def test_goods_catalog_keyword_match(self, router: IntentRouter, session: SessionContext):
+        intent = await router.classify("商品目录", session)
+
+        assert intent == IntentType.KNOWLEDGE
+
+    @pytest.mark.asyncio
     async def test_transfer_keyword_sets_flag(self, router: IntentRouter, session: SessionContext):
         """转人工关键词应设置 transfer_requested 标记"""
         intent = await router.classify("我要转人工", session)
-        assert intent == IntentType.CHITCHAT  # 转人工归为 chitchat
+        assert intent == IntentType.TASK
         assert session.transfer_requested is True
         assert "转人工" in session.transfer_reason
 
@@ -64,11 +70,11 @@ class TestIntentRouter:
         assert intent == IntentType.KNOWLEDGE
 
     @pytest.mark.asyncio
-    async def test_llm_fallback_chitchat(self, router: IntentRouter, mock_llm, session: SessionContext):
-        """LLM 返回 chitchat 或不明确应路由到 CHITCHAT"""
-        mock_llm._response = "chitchat"
+    async def test_llm_fallback_out_of_scope(self, router: IntentRouter, mock_llm, session: SessionContext):
+        """LLM 返回 out_of_scope 或不明确应路由到 OUT_OF_SCOPE"""
+        mock_llm._response = "out_of_scope"
         intent = await router.classify("你好啊", session)
-        assert intent == IntentType.CHITCHAT
+        assert intent == IntentType.OUT_OF_SCOPE
 
     @pytest.mark.asyncio
     async def test_llm_error_fallback(self, router: IntentRouter, mock_llm, session: SessionContext):
@@ -90,3 +96,40 @@ class TestIntentRouter:
         intent = await router.classify("我要投诉，找你们经理", session)
         # 转人工关键词 "找你们经理" 应优先命中
         assert session.transfer_requested is True
+        assert intent == IntentType.TASK
+
+    @pytest.mark.asyncio
+    async def test_task_follow_up_keeps_task_intent(self, router: IntentRouter, session: SessionContext):
+        session.current_intent = IntentType.TASK
+        session.active_workflow = TaskWorkflow.REFUND
+
+        intent = await router.classify("我的订单号是10392", session)
+
+        assert intent == IntentType.TASK
+
+    @pytest.mark.asyncio
+    async def test_task_follow_up_requires_active_workflow(self, router: IntentRouter, mock_llm, session: SessionContext):
+        session.current_intent = IntentType.TASK
+        session.active_workflow = TaskWorkflow.NONE
+        mock_llm._response = "knowledge"
+
+        intent = await router.classify("我的订单号是10392", session)
+
+        assert intent == IntentType.KNOWLEDGE
+
+    @pytest.mark.asyncio
+    async def test_sales_knowledge_follow_up_keeps_knowledge_intent(self, router: IntentRouter, session: SessionContext):
+        session.turn_count = 2
+        session.current_intent = IntentType.KNOWLEDGE
+        session.current_domain = "sales"
+
+        intent = await router.classify("nove", session)
+
+        assert intent == IntentType.KNOWLEDGE
+
+    @pytest.mark.asyncio
+    async def test_first_turn_goods_intro_uses_keyword_not_follow_up(self, router: IntentRouter, session: SessionContext):
+        intent = await router.classify("给我介绍商品", session)
+
+        assert intent == IntentType.KNOWLEDGE
+        assert "knowledge keyword match" in router.last_trace

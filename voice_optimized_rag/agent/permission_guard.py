@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 from typing import Optional
 
 from voice_optimized_rag.agent.base_tool import BaseTool, ToolResult
@@ -116,10 +117,7 @@ class PermissionGuard:
         import uuid
         request_id = str(uuid.uuid4())[:8]
 
-        description = f"即将执行操作「{tool.name}」: {tool.description}"
-        if tool_kwargs:
-            params_str = ", ".join(f"{k}={v}" for k, v in tool_kwargs.items())
-            description += f"（参数: {params_str}）"
+        description = self._build_confirmation_description(tool, tool_kwargs)
 
         # 创建 per-request Future
         loop = asyncio.get_running_loop()
@@ -172,6 +170,17 @@ class PermissionGuard:
                 fut.set_result(confirmed)
                 return
 
+    def _build_confirmation_description(
+        self,
+        tool: BaseTool,
+        tool_kwargs: dict,
+    ) -> str:
+        description = f"即将执行操作「{tool.name}」: {tool.description}"
+        if tool_kwargs:
+            params_str = ", ".join(f"{k}={v}" for k, v in tool_kwargs.items())
+            description += f"（参数: {params_str}）"
+        return description
+
     async def _verify_identity(self, session: SessionContext) -> bool:
         """
         身份验证（简化实现）
@@ -205,3 +214,45 @@ class _IdentityVerificationPseudoTool(BaseTool):
 
     async def execute(self, **kwargs) -> ToolResult:
         return ToolResult(success=True)
+
+
+class TextPermissionGuard(PermissionGuard):
+    """Permission guard for local text interfaces.
+
+    Instead of waiting on a separate confirmation channel, it asks the user for
+    inline yes/no confirmation in the same terminal session.
+    """
+
+    def __init__(
+        self,
+        stream: ConversationStream,
+        confirm_timeout: float = 30.0,
+        prompt_func=None,
+    ) -> None:
+        super().__init__(stream, confirm_timeout=confirm_timeout)
+        self._prompt_func = prompt_func
+
+    async def _request_confirmation(
+        self,
+        tool: BaseTool,
+        session: SessionContext,
+        **tool_kwargs,
+    ) -> bool:
+        prompt = self._build_confirmation_description(tool, tool_kwargs)
+        prompt += "\n请输入 yes 确认，输入 no 取消: "
+        answer = await self._prompt(prompt)
+        return self._is_confirmed(answer)
+
+    async def _prompt(self, prompt: str):
+        if self._prompt_func is None:
+            return await asyncio.to_thread(input, prompt)
+
+        result = self._prompt_func(prompt)
+        if inspect.isawaitable(result):
+            return await result
+        return result
+
+    @staticmethod
+    def _is_confirmed(answer) -> bool:
+        normalized = str(answer).strip().lower()
+        return normalized in {"y", "yes", "是", "确认", "同意", "ok"}

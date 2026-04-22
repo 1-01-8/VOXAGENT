@@ -36,6 +36,7 @@ anthropic = ["anthropic>=0.30"]
 ollama = ["ollama>=0.3"]
 gemini = ["google-genai>=1.0"]
 qdrant = ["qdrant-client>=1.9"]
+mcp = ["mcp>=1.6"]
 voice = [
     "sounddevice>=0.4",
     "webrtcvad>=2.0.10",
@@ -43,7 +44,7 @@ voice = [
     "edge-tts>=6.1",
 ]
 all = [
-    "voice-optimized-rag[openai,anthropic,ollama,gemini,qdrant,voice]",
+    "voice-optimized-rag[openai,anthropic,ollama,gemini,qdrant,mcp,voice]",
 ]
 dev = [
     "pytest>=7.0",

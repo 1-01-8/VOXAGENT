@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import json
 from typing import AsyncIterator
 
 import httpx
 
-from voice_optimized_rag.llm.base import LLMProvider
+from voice_optimized_rag.llm.base import LLMProvider, ToolCall, ToolCallingResponse
 
 
 class OllamaProvider(LLMProvider):
@@ -22,6 +23,10 @@ class OllamaProvider(LLMProvider):
         self._base_url = base_url.rstrip("/")
         self._temperature = temperature
         self._client = httpx.AsyncClient(timeout=60.0)
+
+    @property
+    def supports_function_calling(self) -> bool:
+        return True
 
     async def generate(self, prompt: str, context: str = "") -> str:
         import time, logging
@@ -70,3 +75,48 @@ class OllamaProvider(LLMProvider):
                     content = data.get("message", {}).get("content", "")
                     if content:
                         yield content
+
+    async def complete_with_tools(
+        self,
+        prompt: str,
+        tools: list[dict],
+        context: str = "",
+        tool_choice: str = "auto",
+    ) -> ToolCallingResponse:
+        messages = self._build_messages(prompt, context)
+        response = await self._client.post(
+            f"{self._base_url}/api/chat",
+            json={
+                "model": self._model,
+                "messages": messages,
+                "stream": False,
+                "tools": tools,
+                "tool_choice": tool_choice,
+                "options": {"temperature": self._temperature, "num_predict": 120},
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
+        message = data.get("message", {})
+        content = message.get("content", "") or ""
+        tool_calls: list[ToolCall] = []
+
+        for tool_call in message.get("tool_calls", []) or []:
+            function = tool_call.get("function", {})
+            arguments = function.get("arguments", {})
+            if isinstance(arguments, str):
+                try:
+                    arguments = json.loads(arguments)
+                except json.JSONDecodeError:
+                    arguments = {}
+            tool_calls.append(ToolCall(
+                name=function.get("name", ""),
+                arguments=arguments or {},
+                call_id=tool_call.get("id", ""),
+            ))
+
+        return ToolCallingResponse(
+            content=content,
+            tool_calls=[call for call in tool_calls if call.name],
+            finish_reason=data.get("done_reason", ""),
+        )

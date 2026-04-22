@@ -7,10 +7,11 @@ passed via X-Api-Key header with a dummy api_key (matching the gateway auth patt
 
 from __future__ import annotations
 
+import json
 import os
 from typing import AsyncIterator
 
-from voice_optimized_rag.llm.base import LLMProvider
+from voice_optimized_rag.llm.base import LLMProvider, ToolCall, ToolCallingResponse
 
 
 def _is_salesforce_gateway(url: str | None) -> bool:
@@ -60,6 +61,10 @@ class OpenAIProvider(LLMProvider):
         self._model = model
         self._temperature = temperature
 
+    @property
+    def supports_function_calling(self) -> bool:
+        return True
+
     async def generate(self, prompt: str, context: str = "") -> str:
         response = await self._client.chat.completions.create(
             model=self._model,
@@ -81,3 +86,39 @@ class OpenAIProvider(LLMProvider):
             delta = chunk.choices[0].delta.content
             if delta:
                 yield delta
+
+    async def complete_with_tools(
+        self,
+        prompt: str,
+        tools: list[dict],
+        context: str = "",
+        tool_choice: str = "auto",
+    ) -> ToolCallingResponse:
+        response = await self._client.chat.completions.create(
+            model=self._model,
+            messages=self._build_messages(prompt, context),
+            temperature=self._temperature,
+            tools=tools,
+            tool_choice=tool_choice,
+        )
+        choice = response.choices[0]
+        message = choice.message
+        tool_calls: list[ToolCall] = []
+
+        for tool_call in message.tool_calls or []:
+            raw_arguments = tool_call.function.arguments or "{}"
+            try:
+                arguments = json.loads(raw_arguments)
+            except json.JSONDecodeError:
+                arguments = {}
+            tool_calls.append(ToolCall(
+                name=tool_call.function.name,
+                arguments=arguments,
+                call_id=tool_call.id,
+            ))
+
+        return ToolCallingResponse(
+            content=message.content or "",
+            tool_calls=tool_calls,
+            finish_reason=choice.finish_reason or "",
+        )

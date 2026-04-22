@@ -34,6 +34,7 @@ from voice_optimized_rag.core.slow_thinker import SlowThinker
 from voice_optimized_rag.llm.base import LLMProvider, create_llm
 from voice_optimized_rag.retrieval.document_loader import DocumentChunk, load_directory
 from voice_optimized_rag.retrieval.embeddings import EmbeddingProvider, create_embedding_provider
+from voice_optimized_rag.retrieval.hybrid_retriever import HybridRetriever
 from voice_optimized_rag.retrieval.vector_store import FAISSVectorStore
 from voice_optimized_rag.utils.logging import get_logger, setup_logging
 from voice_optimized_rag.utils.metrics import MetricsCollector
@@ -108,6 +109,12 @@ class MemoryRouter:
                 simulated_latency_ms=self._config.retrieval_latency_ms,
             )
 
+        self._retriever = HybridRetriever(
+            config=self._config,
+            vector_store=self._vector_store,
+            metrics=self._metrics,
+        )
+
         # ── 初始化语义缓存（Slow Thinker 写、Fast Talker 读）──
         self._cache = SemanticCache(
             dimension=self._embeddings.dimension,
@@ -132,6 +139,7 @@ class MemoryRouter:
             cache=self._cache,
             stream=self._stream,
             metrics=self._metrics,
+            retriever=self._retriever,
         )
         # Fast Talker：前台同步响应，先查缓存，缓存未命中时降级到向量检索
         self._fast_talker = FastTalker(
@@ -142,6 +150,7 @@ class MemoryRouter:
             cache=self._cache,
             stream=self._stream,
             metrics=self._metrics,
+            retriever=self._retriever,
         )
         self._running = False
 
@@ -178,22 +187,25 @@ class MemoryRouter:
         Returns:
             LLM 生成的完整回答文本
         """
-        # 发布用户发言事件（同时触发 Slow Thinker 的预取逻辑）
+        response, _ = await self.query_with_trace(text)
+        return response
+
+    async def query_with_trace(self, text: str) -> tuple[str, dict[str, object]]:
+        """Query business knowledge and return a lightweight decision trace."""
         await self._stream.publish(StreamEvent(
             event_type=EventType.USER_UTTERANCE,
             text=text,
         ))
 
-        # Fast Talker 生成回答（从缓存或向量数据库获取上下文）
         response = await self._fast_talker.respond(text)
+        trace = dict(self._fast_talker.last_trace)
 
-        # 将 Agent 回答写入对话历史（供 Slow Thinker 的后续预测使用）
         await self._stream.publish(StreamEvent(
             event_type=EventType.AGENT_RESPONSE,
             text=response,
         ))
 
-        return response
+        return response, trace
 
     async def query_stream(self, text: str) -> AsyncIterator[str]:
         """
@@ -285,6 +297,7 @@ class MemoryRouter:
 
         texts = [c.text for c in chunks]
         metadata = [c.metadata for c in chunks]
+        size_before = self._vector_store.size
 
         # ── 分批 Embedding（避免单次请求过大）──
         batch_size = 100
@@ -297,8 +310,9 @@ class MemoryRouter:
         # 将所有批次的向量垂直拼接为 (total_chunks, dim) 矩阵
         embeddings_array = np.vstack(all_embeddings)
         self._vector_store.add_documents(texts, embeddings_array, metadata)
-        logger.info(f"Ingested {len(chunks)} chunks")
-        return len(chunks)
+        added_count = self._vector_store.size - size_before
+        logger.info(f"Ingested {added_count} new chunks")
+        return added_count
 
     def save_index(self, path: Path | None = None) -> None:
         """
@@ -308,6 +322,11 @@ class MemoryRouter:
         """
         if hasattr(self._vector_store, "save"):
             self._vector_store.save(path or self._config.faiss_index_path)
+
+    @property
+    def document_count(self) -> int:
+        """Number of indexed document chunks currently available."""
+        return self._vector_store.size
 
     @property
     def metrics(self) -> MetricsCollector:

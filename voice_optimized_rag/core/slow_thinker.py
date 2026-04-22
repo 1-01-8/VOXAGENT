@@ -27,6 +27,7 @@ from voice_optimized_rag.core.conversation_stream import (
 from voice_optimized_rag.core.semantic_cache import SemanticCache
 from voice_optimized_rag.llm.base import LLMProvider
 from voice_optimized_rag.retrieval.embeddings import EmbeddingProvider
+from voice_optimized_rag.retrieval.hybrid_retriever import HybridRetriever
 from voice_optimized_rag.retrieval.vector_store import FAISSVectorStore
 from voice_optimized_rag.utils.logging import get_logger
 from voice_optimized_rag.utils.metrics import MetricsCollector, Timer
@@ -80,11 +81,13 @@ class SlowThinker:
         cache: SemanticCache,
         stream: ConversationStream,
         metrics: MetricsCollector,
+        retriever: HybridRetriever | None = None,
     ) -> None:
         self._config = config
         self._llm = llm
         self._embeddings = embedding_provider
         self._vector_store = vector_store
+        self._retriever = retriever or HybridRetriever(config, vector_store, metrics)
         self._cache = cache
         self._stream = stream
         self._metrics = metrics
@@ -309,8 +312,11 @@ class SlowThinker:
             query_embedding = await self._embeddings.embed_single(query)
 
             # 从向量数据库检索，include_embeddings=True 让结果携带文档块自身的向量
-            results = self._vector_store.search(
-                query_embedding, top_k=k, include_embeddings=True,
+            results = self._retriever.search(
+                query_text=query,
+                query_embedding=query_embedding,
+                top_k=k,
+                include_embeddings=True,
             )
 
             if not results:

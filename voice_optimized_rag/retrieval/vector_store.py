@@ -21,6 +21,10 @@ class SearchResult:
     score: float
     index: int
     embedding: np.ndarray | None = None
+    dense_score: float | None = None
+    sparse_score: float | None = None
+    rerank_score: float | None = None
+    retrieval_source: str = "dense"
 
 
 class FAISSVectorStore:
@@ -45,6 +49,8 @@ class FAISSVectorStore:
         self._simulated_latency_ms = simulated_latency_ms
         self._texts: list[str] = []
         self._metadata: list[dict] = []
+        self._doc_keys: set[str] = set()
+        self._document_version = 0
 
         if index_path and index_path.exists():
             self._load(index_path)
@@ -54,6 +60,10 @@ class FAISSVectorStore:
     @property
     def size(self) -> int:
         return self._index.ntotal
+
+    @property
+    def document_version(self) -> int:
+        return self._document_version
 
     def add_documents(
         self,
@@ -71,12 +81,33 @@ class FAISSVectorStore:
         if len(texts) != embeddings.shape[0]:
             raise ValueError("texts and embeddings must have the same length")
 
+        metadata_list = metadata or [{} for _ in texts]
+        filtered_texts: list[str] = []
+        filtered_metadata: list[dict] = []
+        filtered_embeddings: list[np.ndarray] = []
+
+        for text, embedding, meta in zip(texts, embeddings, metadata_list):
+            key = self._make_doc_key(text, meta)
+            if key in self._doc_keys:
+                continue
+            filtered_texts.append(text)
+            filtered_metadata.append(meta)
+            filtered_embeddings.append(embedding)
+            self._doc_keys.add(key)
+
+        if not filtered_texts:
+            logger.info("Skipped duplicate documents; no new vectors were added")
+            return
+
+        embeddings = np.asarray(filtered_embeddings, dtype=np.float32)
+
         # Normalize for cosine similarity via inner product
         faiss.normalize_L2(embeddings)
         self._index.add(embeddings)
-        self._texts.extend(texts)
-        self._metadata.extend(metadata or [{} for _ in texts])
-        logger.info(f"Added {len(texts)} documents (total: {self.size})")
+        self._texts.extend(filtered_texts)
+        self._metadata.extend(filtered_metadata)
+        self.bump_version()
+        logger.info(f"Added {len(filtered_texts)} documents (total: {self.size})")
 
     def search(
         self,
@@ -122,8 +153,32 @@ class FAISSVectorStore:
                 score=float(score),
                 index=int(idx),
                 embedding=emb,
+                dense_score=float(score),
+                retrieval_source="dense",
             ))
         return results
+
+    def list_documents(self) -> list[SearchResult]:
+        """Return all indexed documents for sparse indexing and metadata sync."""
+        return [
+            SearchResult(
+                text=text,
+                metadata=meta,
+                score=0.0,
+                index=index,
+                retrieval_source="sparse",
+            )
+            for index, (text, meta) in enumerate(zip(self._texts, self._metadata))
+        ]
+
+    def get_embedding(self, index: int) -> np.ndarray | None:
+        """Reconstruct a stored document embedding by index when available."""
+        if index < 0 or index >= self.size:
+            return None
+        return self._index.reconstruct(index)
+
+    def bump_version(self) -> None:
+        self._document_version += 1
 
     def save(self, path: Path | None = None) -> None:
         """Persist the index and metadata to disk."""
@@ -159,4 +214,43 @@ class FAISSVectorStore:
             data = json.load(f)
         self._texts = data["texts"]
         self._metadata = data["metadata"]
+        self._deduplicate_loaded_documents()
+        self.bump_version()
         logger.info(f"Loaded index with {self.size} vectors from {path}")
+
+    def _deduplicate_loaded_documents(self) -> None:
+        keep_indices: list[int] = []
+        seen: set[str] = set()
+
+        for index, (text, meta) in enumerate(zip(self._texts, self._metadata)):
+            key = self._make_doc_key(text, meta)
+            if key in seen:
+                continue
+            seen.add(key)
+            keep_indices.append(index)
+
+        if len(keep_indices) == len(self._texts):
+            self._doc_keys = seen
+            return
+
+        removed_count = len(self._texts) - len(keep_indices)
+
+        embeddings = np.vstack([
+            self._index.reconstruct(index)
+            for index in keep_indices
+        ]).astype(np.float32)
+        self._index = faiss.IndexFlatIP(self._dimension)
+        if len(embeddings) > 0:
+            self._index.add(embeddings)
+        self._texts = [self._texts[index] for index in keep_indices]
+        self._metadata = [self._metadata[index] for index in keep_indices]
+        self._doc_keys = seen
+        logger.info(f"Deduplicated loaded index: removed {removed_count} duplicates")
+
+    @staticmethod
+    def _make_doc_key(text: str, metadata: dict) -> str:
+        source = metadata.get("source")
+        chunk_index = metadata.get("chunk_index")
+        if source is not None and chunk_index is not None:
+            return f"{source}::{chunk_index}"
+        return text.strip()

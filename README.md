@@ -1,15 +1,5 @@
 # VoiceAgentRAG
 
-<p align="center">
-  <b>Solving the RAG Latency Bottleneck in Real-Time Voice Agents Using Dual-Agent Architectures</b>
-</p>
-
-<p align="center">
-  <a href="https://github.com/SalesforceAIResearch/VoiceAgentRAG"><img src="https://img.shields.io/badge/GitHub-VoiceAgentRAG-blue?logo=github" alt="GitHub"></a>
-  <a href="#license"><img src="https://img.shields.io/badge/License-CC--BY--NC--4.0-green" alt="License"></a>
-  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.10+-blue?logo=python" alt="Python"></a>
-</p>
-
 Traditional RAG (Retrieval-Augmented Generation) kills real-time voice conversations. A 200ms+ vector database lookup blows the latency budget, making conversations feel unnatural. **VoiceAgentRAG** solves this with a **dual-agent architecture**: a background *Slow Thinker* continuously pre-fetches context into a fast cache, while a foreground *Fast Talker* reads only from this instant-access cache.
 
 **Key Results** (200 queries, 10 scenarios, Qdrant Cloud):
@@ -19,41 +9,8 @@ Traditional RAG (Retrieval-Augmented Generation) kills real-time voice conversat
 
 ---
 
-## Quick Start (3 minutes)
 
-### Option A: OpenAI (recommended)
-
-```bash
-# 1. Clone and install
-git clone https://github.com/SalesforceAIResearch/VoiceAgentRAG
-cd VoiceAgentRAG
-uv venv .venv && source .venv/bin/activate
-uv pip install -e ".[openai,dev]"
-
-# 2. Set your OpenAI API key (get one at platform.openai.com)
-export OPENAI_API_KEY="sk-..."
-
-# 3. Run the CLI demo
-python examples/cli_demo.py --docs knowledge_base/
 ```
-
-### Option B: Gemini
-
-```bash
-# 1. Clone and install
-git clone https://github.com/SalesforceAIResearch/VoiceAgentRAG
-cd VoiceAgentRAG
-uv venv .venv && source .venv/bin/activate
-uv pip install -e ".[openai,gemini,dev]"   # openai still needed for embeddings
-
-# 2. Set your API keys
-export GEMINI_API_KEY="AIza..."            # get one at aistudio.google.com
-export OPENAI_API_KEY="sk-..."             # needed for text-embedding-3-small
-
-# 3. Run the CLI demo with Gemini
-python examples/cli_demo.py --provider gemini --model gemini-2.5-flash --docs knowledge_base/
-```
-
 ### Option C: Fully local with Ollama (no API keys)
 
 ```bash
@@ -325,22 +282,3 @@ knowledge_base/              # Sample enterprise KB (NovaCRM)
 tests/                       # 32 unit + integration tests
 ```
 
-## Citation
-
-If you use VoiceAgentRAG in your research, please cite:
-
-```bibtex
-@techreport{voiceagentrag2025,
-  title={VoiceAgentRAG: Solving the RAG Latency Bottleneck in Real-Time Voice Agents Using Dual-Agent Architectures},
-  author={Qiu, Jielin and Zhang, Jianguo and Chen, Zixiang and Yang, Liangwei and Zhu, Ming and Tan, Juntao and Chen, Haolin and Zhao, Wenting and Murthy, Rithesh and Ram, Roshan and Prabhakar, Akshara and Heinecke, Shelby and Xiong, Caiming and Savarese, Silvio and Wang, Huan},
-  institution={Salesforce AI Research},
-  year={2025},
-  url={https://github.com/SalesforceAIResearch/VoiceAgentRAG}
-}
-```
-
-## License
-
-This project is licensed under [CC-BY-NC-4.0](https://creativecommons.org/licenses/by-nc/4.0/).
-
-Copyright (c) Salesforce AI Research.
